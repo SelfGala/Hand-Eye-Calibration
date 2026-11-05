@@ -1,0 +1,258 @@
+park_20261105T091623_37038a4a4d
+算法 PARK；数据版本 26
+r_end_link <- d405_color_optical_frame，米 / xyzw
+验证状态：有独立验证
+手眼链像素误差由训练集板位姿预测，验证样本不参与拟合。
+采样依赖人工保持不动；没有稳定等待或运动状态门槛。
+
+
+{
+  "training": {
+    "count": 20,
+    "per_sample": [
+      {
+        "sample_id": "sample_20261105T091447_3324e4dab7",
+        "role": "train",
+        "position_error_mm": 1.0889317552570452,
+        "rotation_error_deg": 0.04616606621887955,
+        "pnp_rmse_px": 0.24130298286408794,
+        "predicted_reprojection_rmse_px": 0.5600959080670553
+      },
+      {
+        "sample_id": "sample_20261105T091447_9d52c1d190",
+        "role": "train",
+        "position_error_mm": 0.5399277240837187,
+        "rotation_error_deg": 0.08641251364305842,
+        "pnp_rmse_px": 0.3053764521720535,
+        "predicted_reprojection_rmse_px": 0.45292339486815947
+      },
+      {
+        "sample_id": "sample_20261105T091447_43fb86e23e",
+        "role": "train",
+        "position_error_mm": 0.7940078666495288,
+        "rotation_error_deg": 0.17883781005622965,
+        "pnp_rmse_px": 0.2532544114920771,
+        "predicted_reprojection_rmse_px": 0.5576109842034729
+      },
+      {
+        "sample_id": "sample_20261105T091447_0e1c87aad1",
+        "role": "train",
+        "position_error_mm": 1.0805672186106383,
+        "rotation_error_deg": 0.1385810877222153,
+        "pnp_rmse_px": 0.25598070208452295,
+        "predicted_reprojection_rmse_px": 0.6700228641262769
+      },
+      {
+        "sample_id": "sample_20261105T091447_d4b024ab0a",
+        "role": "train",
+        "position_error_mm": 1.8504840911375848,
+        "rotation_error_deg": 0.21545744338587253,
+        "pnp_rmse_px": 0.297444676778868,
+        "predicted_reprojection_rmse_px": 0.9316323393860922
+      },
+      {
+        "sample_id": "sample_20261105T091447_3ec4c62ce9",
+        "role": "train",
+        "position_error_mm": 0.9924739021126404,
+        "rotation_error_deg": 0.25849548307814535,
+        "pnp_rmse_px": 0.3158302640356084,
+        "predicted_reprojection_rmse_px": 0.597520213632999
+      },
+      {
+        "sample_id": "sample_20261105T091447_056037576f",
+        "role": "train",
+        "position_error_mm": 0.9295297920301955,
+        "rotation_error_deg": 0.277074337974727,
+        "pnp_rmse_px": 0.2554946397172847,
+        "predicted_reprojection_rmse_px": 0.44595780567887133
+      },
+      {
+        "sample_id": "sample_20261105T091447_fccfc12954",
+        "role": "train",
+        "position_error_mm": 1.5292830921419143,
+        "rotation_error_deg": 0.1835898567926258,
+        "pnp_rmse_px": 0.28632002774746135,
+        "predicted_reprojection_rmse_px": 0.9483109243984134
+      },
+      {
+        "sample_id": "sample_20261105T091447_83e9a74f30",
+        "role": "train",
+        "position_error_mm": 1.505280387525789,
+        "rotation_error_deg": 0.05931039422262094,
+        "pnp_rmse_px": 0.28241928878563916,
+        "predicted_reprojection_rmse_px": 0.5006276343232964
+      },
+      {
+        "sample_id": "sample_20261105T091447_dc1eaeb031",
+        "role": "train",
+        "position_error_mm": 1.083772516592138,
+        "rotation_error_deg": 0.16320451626707436,
+        "pnp_rmse_px": 0.2763415356603184,
+        "predicted_reprojection_rmse_px": 0.47923231440796776
+      },
+      {
+        "sample_id": "sample_20261105T091447_4c863d30e3",
+        "role": "train",
+        "position_error_mm": 0.8560142438955101,
+        "rotation_error_deg": 0.3387048723463197,
+        "pnp_rmse_px": 0.2905231274888037,
+        "predicted_reprojection_rmse_px": 0.550950866027381
+      },
+      {
+        "sample_id": "sample_20261105T091447_153a51bccc",
+        "role": "train",
+        "position_error_mm": 1.5912885595841315,
+        "rotation_error_deg": 0.06152966981117472,
+        "pnp_rmse_px": 0.26416453283759855,
+        "predicted_reprojection_rmse_px": 0.7169834717041633
+      },
+      {
+        "sample_id": "sample_20261105T091447_df9d3c288f",
+        "role": "train",
+        "position_error_mm": 1.2289815235315336,
+        "rotation_error_deg": 0.38805692265899655,
+        "pnp_rmse_px": 0.2576427883962589,
+        "predicted_reprojection_rmse_px": 0.4714762869697726
+      },
+      {
+        "sample_id": "sample_20261105T091447_f0e7e0925a",
+        "role": "train",
+        "position_error_mm": 1.2174035573796538,
+        "rotation_error_deg": 0.19481342607236,
+        "pnp_rmse_px": 0.3357060554323308,
+        "predicted_reprojection_rmse_px": 0.513745730625977
+      },
+      {
+        "sample_id": "sample_20261105T091447_006b3843d1",
+        "role": "train",
+        "position_error_mm": 0.6987724996284298,
+        "rotation_error_deg": 0.23094972834320454,
+        "pnp_rmse_px": 0.30838325447149334,
+        "predicted_reprojection_rmse_px": 0.4538822226773603
+      },
+      {
+        "sample_id": "sample_20261105T091447_ddc63cc4f4",
+        "role": "train",
+        "position_error_mm": 1.5267839275387276,
+        "rotation_error_deg": 0.23897649622462971,
+        "pnp_rmse_px": 0.28665650400939,
+        "predicted_reprojection_rmse_px": 0.47736662222907306
+      },
+      {
+        "sample_id": "sample_20261105T091447_bf2101b6ef",
+        "role": "train",
+        "position_error_mm": 1.1587783507545968,
+        "rotation_error_deg": 0.21257424857781756,
+        "pnp_rmse_px": 0.26287359702865787,
+        "predicted_reprojection_rmse_px": 0.6187346021480101
+      },
+      {
+        "sample_id": "sample_20261105T091447_3ae86e14f6",
+        "role": "train",
+        "position_error_mm": 1.0902313103410237,
+        "rotation_error_deg": 0.21051856109930192,
+        "pnp_rmse_px": 0.28351240869135336,
+        "predicted_reprojection_rmse_px": 0.40513361823581556
+      },
+      {
+        "sample_id": "sample_20261105T091447_fd59f80c00",
+        "role": "train",
+        "position_error_mm": 2.1904323646185064,
+        "rotation_error_deg": 0.4401102347615292,
+        "pnp_rmse_px": 0.2404389047074494,
+        "predicted_reprojection_rmse_px": 0.5341173517104912
+      },
+      {
+        "sample_id": "sample_20261105T091447_993230b345",
+        "role": "train",
+        "position_error_mm": 0.9832112545339106,
+        "rotation_error_deg": 0.2117223188689677,
+        "pnp_rmse_px": 0.28781328471062473,
+        "predicted_reprojection_rmse_px": 0.33833776059417464
+      }
+    ],
+    "position_mm": {
+      "mean": 1.1968077968973607,
+      "rmse": 1.2589812785176946,
+      "p95": 1.867481504811631,
+      "max": 2.1904323646185064
+    },
+    "rotation_deg": {
+      "mean": 0.20675429940628756,
+      "rmse": 0.23023693327578407,
+      "p95": 0.3906595882641232,
+      "max": 0.4401102347615292
+    },
+    "predicted_reprojection_px": {
+      "mean": 0.5612331458007412,
+      "rmse": 0.5816607575437173,
+      "p95": 0.9324662686367083,
+      "max": 0.9483109243984134
+    }
+  },
+  "validation": {
+    "count": 5,
+    "per_sample": [
+      {
+        "sample_id": "sample_20261105T091447_11ea412198",
+        "role": "validation",
+        "position_error_mm": 1.6295093038769823,
+        "rotation_error_deg": 0.22849577015857706,
+        "pnp_rmse_px": 0.2896123937033573,
+        "predicted_reprojection_rmse_px": 0.8317348283005013
+      },
+      {
+        "sample_id": "sample_20261105T091447_f3fd63bcff",
+        "role": "validation",
+        "position_error_mm": 1.5645707862263543,
+        "rotation_error_deg": 0.4249933239517035,
+        "pnp_rmse_px": 0.3187844476779552,
+        "predicted_reprojection_rmse_px": 0.3477349569934929
+      },
+      {
+        "sample_id": "sample_20261105T091447_89e25c58ec",
+        "role": "validation",
+        "position_error_mm": 0.6292014980613506,
+        "rotation_error_deg": 0.6732251625469012,
+        "pnp_rmse_px": 0.25543747278209633,
+        "predicted_reprojection_rmse_px": 0.49806914689311893
+      },
+      {
+        "sample_id": "sample_20261105T091447_817513f6ca",
+        "role": "validation",
+        "position_error_mm": 0.8761153049062622,
+        "rotation_error_deg": 0.1551965293626475,
+        "pnp_rmse_px": 0.2594612127358541,
+        "predicted_reprojection_rmse_px": 0.33687475868154576
+      },
+      {
+        "sample_id": "sample_20261105T091447_6ffb72ea8c",
+        "role": "validation",
+        "position_error_mm": 1.6966004331611497,
+        "rotation_error_deg": 0.03341022182068915,
+        "pnp_rmse_px": 0.28011710531751405,
+        "predicted_reprojection_rmse_px": 0.9415311642076394
+      }
+    ],
+    "position_mm": {
+      "mean": 1.2791994652464198,
+      "rmse": 1.3524132429838773,
+      "p95": 1.6831822073043163,
+      "max": 1.6966004331611497
+    },
+    "rotation_deg": {
+      "mean": 0.30306420156810365,
+      "rmse": 0.3771641466307473,
+      "p95": 0.6235787948278616,
+      "max": 0.6732251625469012
+    },
+    "predicted_reprojection_px": {
+      "mean": 0.5911889710152597,
+      "rmse": 0.6419876690748993,
+      "p95": 0.9195718970262118,
+      "max": 0.9415311642076394
+    }
+  },
+  "statistics": "per-pose Euclidean translation / SO(3) angle; p95 linear percentile",
+  "pixel_error": "prediction from X and training-only board mean; no validation refit"
+}

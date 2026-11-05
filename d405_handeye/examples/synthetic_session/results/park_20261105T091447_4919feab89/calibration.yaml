@@ -1,0 +1,319 @@
+schema_version: 2
+calibration_type: eye_in_hand
+method: PARK
+transform_convention: p_parent = T_parent_child @ p_child
+translation_unit: m
+quaternion_order: xyzw
+matrix_order: row_major
+T_parent_child:
+- - 0.9806970717062703
+  - -0.1871543073954316
+  - -0.05662613151262172
+  - 0.060000000000000206
+- - 0.17845698426949128
+  - 0.9750557807790418
+  - -0.13198230614295922
+  - -0.024999999999996254
+- - 0.07991469396917358
+  - 0.1193293324908499
+  - 0.9896333422511097
+  - 0.09000000000000066
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+translation:
+- 0.060000000000000206
+- -0.024999999999996254
+- 0.09000000000000066
+quaternion:
+- 0.0632612612032816
+- -0.0343706518037621
+- 0.09203326812327066
+- 0.9931498118028844
+T_base_board_training_mean:
+- - 0.9788417498233433
+  - -0.06953853254470731
+  - -0.1924401758841024
+  - 0.5000000000000001
+- - 0.04898291339046186
+  - 0.9927693904150059
+  - -0.10958837370268876
+  - 0.10000000000000075
+- - 0.19866933079506283
+  - 0.09784339500725808
+  - 0.9751703272018153
+  - 0.24999999999999994
+- - 0.0
+  - 0.0
+  - 0.0
+  - 1.0
+training_sample_ids:
+- sample_20261105T091447_3324e4dab7
+- sample_20261105T091447_9d52c1d190
+- sample_20261105T091447_43fb86e23e
+- sample_20261105T091447_0e1c87aad1
+- sample_20261105T091447_d4b024ab0a
+- sample_20261105T091447_3ec4c62ce9
+- sample_20261105T091447_056037576f
+- sample_20261105T091447_fccfc12954
+- sample_20261105T091447_83e9a74f30
+- sample_20261105T091447_dc1eaeb031
+- sample_20261105T091447_4c863d30e3
+- sample_20261105T091447_153a51bccc
+- sample_20261105T091447_df9d3c288f
+- sample_20261105T091447_f0e7e0925a
+- sample_20261105T091447_006b3843d1
+- sample_20261105T091447_ddc63cc4f4
+- sample_20261105T091447_bf2101b6ef
+- sample_20261105T091447_3ae86e14f6
+- sample_20261105T091447_fd59f80c00
+- sample_20261105T091447_993230b345
+validation_sample_ids:
+- sample_20261105T091447_11ea412198
+- sample_20261105T091447_f3fd63bcff
+- sample_20261105T091447_89e25c58ec
+- sample_20261105T091447_817513f6ca
+- sample_20261105T091447_6ffb72ea8c
+has_validation_metrics: true
+validation_state: validation_available
+pairing_mode: manual_stationary_snapshot
+robot_read_policy: capture_only
+pose_reads_per_capture: 1
+excitation:
+  rank: 3
+  singular_values_rad:
+  - 5.201833255194299
+  - 4.587967122299446
+  - 3.435445663599393
+warnings: []
+metrics:
+  training:
+    count: 20
+    per_sample:
+    - sample_id: sample_20261105T091447_3324e4dab7
+      role: train
+      position_error_mm: 4.1910000110727263e-13
+      rotation_error_deg: 7.488928654203997e-14
+      pnp_rmse_px: 6.597810074132876e-14
+      predicted_reprojection_rmse_px: 2.799480936422345e-13
+    - sample_id: sample_20261105T091447_9d52c1d190
+      role: train
+      position_error_mm: 7.731808680624463e-13
+      rotation_error_deg: 2.5628355069269583e-13
+      pnp_rmse_px: 5.87840230820824e-14
+      predicted_reprojection_rmse_px: 8.111490734864357e-13
+    - sample_id: sample_20261105T091447_43fb86e23e
+      role: train
+      position_error_mm: 3.3565890684838574e-13
+      rotation_error_deg: 1.417198906828631e-13
+      pnp_rmse_px: 3.235953969086217e-14
+      predicted_reprojection_rmse_px: 4.155038341875826e-13
+    - sample_id: sample_20261105T091447_0e1c87aad1
+      role: train
+      position_error_mm: 9.820925191391733e-13
+      rotation_error_deg: 1.5298631892784336e-13
+      pnp_rmse_px: 5.814435199631706e-14
+      predicted_reprojection_rmse_px: 4.0250153737982453e-13
+    - sample_id: sample_20261105T091447_d4b024ab0a
+      role: train
+      position_error_mm: 4.272916553455145e-13
+      rotation_error_deg: 8.594944492731662e-14
+      pnp_rmse_px: 5.303129589387262e-14
+      predicted_reprojection_rmse_px: 7.204008942823092e-13
+    - sample_id: sample_20261105T091447_3ec4c62ce9
+      role: train
+      position_error_mm: 8.345155887641791e-13
+      rotation_error_deg: 1.8441557496363213e-13
+      pnp_rmse_px: 5.289006715872873e-14
+      predicted_reprojection_rmse_px: 5.626014983821126e-13
+    - sample_id: sample_20261105T091447_056037576f
+      role: train
+      position_error_mm: 1.8030979837823827e-12
+      rotation_error_deg: 2.6916251975321476e-13
+      pnp_rmse_px: 7.45975879492923e-14
+      predicted_reprojection_rmse_px: 3.705131967426907e-13
+    - sample_id: sample_20261105T091447_fccfc12954
+      role: train
+      position_error_mm: 7.473417450352271e-13
+      rotation_error_deg: 1.9062416561561173e-13
+      pnp_rmse_px: 6.224481740126314e-14
+      predicted_reprojection_rmse_px: 7.498660669048035e-13
+    - sample_id: sample_20261105T091447_83e9a74f30
+      role: train
+      position_error_mm: 2.077037090527612e-13
+      rotation_error_deg: 3.8502864571441186e-14
+      pnp_rmse_px: 4.3586819066510307e-14
+      predicted_reprojection_rmse_px: 5.253248681464331e-13
+    - sample_id: sample_20261105T091447_dc1eaeb031
+      role: train
+      position_error_mm: 5.23691153334427e-13
+      rotation_error_deg: 9.210666770143544e-14
+      pnp_rmse_px: 4.998176068809627e-14
+      predicted_reprojection_rmse_px: 4.379396483412247e-13
+    - sample_id: sample_20261105T091447_4c863d30e3
+      role: train
+      position_error_mm: 3.7341307954279785e-13
+      rotation_error_deg: 5.622579366169013e-14
+      pnp_rmse_px: 4.1835623516930536e-14
+      predicted_reprojection_rmse_px: 5.614436755281931e-13
+    - sample_id: sample_20261105T091447_153a51bccc
+      role: train
+      position_error_mm: 6.707437923744492e-13
+      rotation_error_deg: 1.2597196759566039e-13
+      pnp_rmse_px: 3.5023556223606273e-14
+      predicted_reprojection_rmse_px: 3.542488200955976e-13
+    - sample_id: sample_20261105T091447_df9d3c288f
+      role: train
+      position_error_mm: 8.563843312570935e-13
+      rotation_error_deg: 1.783273375002088e-13
+      pnp_rmse_px: 4.5270323586462924e-14
+      predicted_reprojection_rmse_px: 3.0706263242340226e-13
+    - sample_id: sample_20261105T091447_f0e7e0925a
+      role: train
+      position_error_mm: 2.077037090527612e-13
+      rotation_error_deg: 6.443651924183828e-14
+      pnp_rmse_px: 4.306893748342069e-14
+      predicted_reprojection_rmse_px: 6.422020658223393e-13
+    - sample_id: sample_20261105T091447_006b3843d1
+      role: train
+      position_error_mm: 1.3033304304548182e-12
+      rotation_error_deg: 2.7033838235430567e-13
+      pnp_rmse_px: 1.0232984945774541e-13
+      predicted_reprojection_rmse_px: 7.750575398934037e-13
+    - sample_id: sample_20261105T091447_ddc63cc4f4
+      role: train
+      position_error_mm: 5.331671968450009e-13
+      rotation_error_deg: 3.775217111489111e-13
+      pnp_rmse_px: 8.987733679556355e-14
+      predicted_reprojection_rmse_px: 6.220274587404939e-13
+    - sample_id: sample_20261105T091447_bf2101b6ef
+      role: train
+      position_error_mm: 1.187990514796716e-12
+      rotation_error_deg: 2.5768116141250385e-13
+      pnp_rmse_px: 6.176229215955354e-14
+      predicted_reprojection_rmse_px: 4.59492441478161e-13
+    - sample_id: sample_20261105T091447_3ae86e14f6
+      role: train
+      position_error_mm: 3.0688430113079397e-13
+      rotation_error_deg: 1.3000430620842202e-13
+      pnp_rmse_px: 4.111426558429336e-14
+      predicted_reprojection_rmse_px: 4.565202517656249e-13
+    - sample_id: sample_20261105T091447_fd59f80c00
+      role: train
+      position_error_mm: 4.1910000110727263e-13
+      rotation_error_deg: 1.4126650924560706e-13
+      pnp_rmse_px: 7.215109676758315e-14
+      predicted_reprojection_rmse_px: 5.879292907760083e-13
+    - sample_id: sample_20261105T091447_993230b345
+      role: train
+      position_error_mm: 3.764949453935611e-13
+      rotation_error_deg: 1.5398691269324979e-13
+      pnp_rmse_px: 1.0718497851281238e-13
+      predicted_reprojection_rmse_px: 7.387214846561743e-13
+    position_mm:
+      mean: 6.644443216213517e-13
+      rmse: 7.7551258750811e-13
+      p95: 1.3283188081211967e-12
+      max: 1.8030979837823827e-12
+    rotation_deg:
+      mean: 1.6212004427202457e-13
+      rmse: 1.8336915228512708e-13
+      p95: 2.75697548794036e-13
+      max: 3.775217111489111e-13
+    predicted_reprojection_px:
+      mean: 5.390227186337525e-13
+      rmse: 5.621293414395229e-13
+      p95: 7.768621165730553e-13
+      max: 8.111490734864357e-13
+  validation:
+    count: 5
+    per_sample:
+    - sample_id: sample_20261105T091447_11ea412198
+      role: validation
+      position_error_mm: 2.077037090527612e-13
+      rotation_error_deg: 8.195123443064014e-14
+      pnp_rmse_px: 5.0428700378534767e-14
+      predicted_reprojection_rmse_px: 6.156579347164835e-13
+    - sample_id: sample_20261105T091447_f3fd63bcff
+      role: validation
+      position_error_mm: 1.7826341206874e-12
+      rotation_error_deg: 7.041075541017261e-13
+      pnp_rmse_px: 2.2668181740462309e-13
+      predicted_reprojection_rmse_px: 6.193643430636998e-13
+    - sample_id: sample_20261105T091447_89e25c58ec
+      role: validation
+      position_error_mm: 5.244261588236205e-13
+      rotation_error_deg: 1.0132524578375725e-13
+      pnp_rmse_px: 4.8923025464311556e-14
+      predicted_reprojection_rmse_px: 3.041747551911737e-13
+    - sample_id: sample_20261105T091447_817513f6ca
+      role: validation
+      position_error_mm: 8.214900197283516e-13
+      rotation_error_deg: 1.8479212119609517e-13
+      pnp_rmse_px: 3.8092474223626404e-14
+      predicted_reprojection_rmse_px: 3.113922707997345e-13
+    - sample_id: sample_20261105T091447_6ffb72ea8c
+      role: validation
+      position_error_mm: 7.249732973174093e-13
+      rotation_error_deg: 8.124078294329533e-14
+      pnp_rmse_px: 4.592644943970308e-14
+      predicted_reprojection_rmse_px: 6.947457199512297e-13
+    position_mm:
+      mean: 8.122454611219085e-13
+      rmse: 9.691625425477684e-13
+      p95: 1.59040530049559e-12
+      max: 1.7826341206874e-12
+    rotation_deg:
+      mean: 2.3068338769110277e-13
+      rmse: 3.3271562959090205e-13
+      p95: 6.002444675205998e-13
+      max: 7.041075541017261e-13
+    predicted_reprojection_px:
+      mean: 5.090670047444642e-13
+      rmse: 5.35687581606681e-13
+      p95: 6.796694445737237e-13
+      max: 6.947457199512297e-13
+  statistics: per-pose Euclidean translation / SO(3) angle; p95 linear percentile
+  pixel_error: prediction from X and training-only board mean; no validation refit
+result_id: park_20261105T091447_4919feab89
+dataset_revision: 25
+parent_frame: r_end_link
+child_frame: d405_color_optical_frame
+geometry_fingerprint: 479327963c20c2e148b8cc8819af5f01cba42e7e86419b2e76b20d6cdd40d671
+board:
+  count_interpretation: inner_corners
+  cols: 9
+  rows: 6
+  square_length_m: 0.043
+  physical_origin: 固定同一物理角为 0，沿长边为 X、短边为 Y；人工核对编号
+camera:
+  width: 848
+  height: 480
+  K:
+  - - 620.0
+    - 0.0
+    - 424.0
+  - - 0.0
+    - 620.0
+    - 240.0
+  - - 0.0
+    - 0.0
+    - 1.0
+  D:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  distortion_model: none
+  profile:
+    source: SYNTHETIC_DEMO
+    stream: color
+    index: 0
+    format: bgr8
+    fps: 30
+    serial: DEMO
+environment:
+  kind: synthetic
+  seed: 314159

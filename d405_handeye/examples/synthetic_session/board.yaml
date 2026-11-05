@@ -1,0 +1,5 @@
+cols: 9
+count_interpretation: inner_corners
+physical_origin: 固定同一物理角为 0，沿长边为 X、短边为 Y；人工核对编号
+rows: 6
+square_length_m: 0.043

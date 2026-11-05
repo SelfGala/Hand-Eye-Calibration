@@ -1,0 +1,181 @@
+{
+  "schema_version": 2,
+  "dataset_revision": 26,
+  "samples": [
+    {
+      "sample_id": "sample_20261105T091447_3324e4dab7",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_0",
+      "analysis_path": "analyses/sample_20261105T091447_3324e4dab7/analysis_20261105T091623_52e230ead3.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_9d52c1d190",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_1",
+      "analysis_path": "analyses/sample_20261105T091447_9d52c1d190/analysis_20261105T091623_aabb6c159a.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_43fb86e23e",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_2",
+      "analysis_path": "analyses/sample_20261105T091447_43fb86e23e/analysis_20261105T091623_94d2d33b9a.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_0e1c87aad1",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_3",
+      "analysis_path": "analyses/sample_20261105T091447_0e1c87aad1/analysis_20261105T091623_cb8d19859e.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_d4b024ab0a",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_4",
+      "analysis_path": "analyses/sample_20261105T091447_d4b024ab0a/analysis_20261105T091623_7afb63597a.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_3ec4c62ce9",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_5",
+      "analysis_path": "analyses/sample_20261105T091447_3ec4c62ce9/analysis_20261105T091623_6f5f4e4fc0.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_056037576f",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_6",
+      "analysis_path": "analyses/sample_20261105T091447_056037576f/analysis_20261105T091623_1f359c5e68.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_fccfc12954",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_7",
+      "analysis_path": "analyses/sample_20261105T091447_fccfc12954/analysis_20261105T091623_d0037e3690.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_83e9a74f30",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_8",
+      "analysis_path": "analyses/sample_20261105T091447_83e9a74f30/analysis_20261105T091623_adb36185cf.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_dc1eaeb031",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_9",
+      "analysis_path": "analyses/sample_20261105T091447_dc1eaeb031/analysis_20261105T091623_ef7ae7f049.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_4c863d30e3",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_10",
+      "analysis_path": "analyses/sample_20261105T091447_4c863d30e3/analysis_20261105T091623_9cd9f5d6d3.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_153a51bccc",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_11",
+      "analysis_path": "analyses/sample_20261105T091447_153a51bccc/analysis_20261105T091623_4cd1929708.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_df9d3c288f",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_12",
+      "analysis_path": "analyses/sample_20261105T091447_df9d3c288f/analysis_20261105T091623_9d17a9ce10.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_f0e7e0925a",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_13",
+      "analysis_path": "analyses/sample_20261105T091447_f0e7e0925a/analysis_20261105T091623_9eb562fe78.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_006b3843d1",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_14",
+      "analysis_path": "analyses/sample_20261105T091447_006b3843d1/analysis_20261105T091623_25a2cc9d0e.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_ddc63cc4f4",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_15",
+      "analysis_path": "analyses/sample_20261105T091447_ddc63cc4f4/analysis_20261105T091623_e18e405868.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_bf2101b6ef",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_16",
+      "analysis_path": "analyses/sample_20261105T091447_bf2101b6ef/analysis_20261105T091623_83cb5fb5af.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_3ae86e14f6",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_17",
+      "analysis_path": "analyses/sample_20261105T091447_3ae86e14f6/analysis_20261105T091623_0c2a62073c.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_fd59f80c00",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_18",
+      "analysis_path": "analyses/sample_20261105T091447_fd59f80c00/analysis_20261105T091623_1fee1091b6.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_993230b345",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_19",
+      "analysis_path": "analyses/sample_20261105T091447_993230b345/analysis_20261105T091623_7d8b7a3581.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_11ea412198",
+      "role": "validation",
+      "enabled": true,
+      "label": "SYNTHETIC_20",
+      "analysis_path": "analyses/sample_20261105T091447_11ea412198/analysis_20261105T091623_805dd8ef3b.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_f3fd63bcff",
+      "role": "validation",
+      "enabled": true,
+      "label": "SYNTHETIC_21",
+      "analysis_path": "analyses/sample_20261105T091447_f3fd63bcff/analysis_20261105T091623_b9785a251d.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_89e25c58ec",
+      "role": "validation",
+      "enabled": true,
+      "label": "SYNTHETIC_22",
+      "analysis_path": "analyses/sample_20261105T091447_89e25c58ec/analysis_20261105T091623_4cff64d950.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_817513f6ca",
+      "role": "validation",
+      "enabled": true,
+      "label": "SYNTHETIC_23",
+      "analysis_path": "analyses/sample_20261105T091447_817513f6ca/analysis_20261105T091623_6971a1c7c5.json"
+    },
+    {
+      "sample_id": "sample_20261105T091447_6ffb72ea8c",
+      "role": "validation",
+      "enabled": true,
+      "label": "SYNTHETIC_24",
+      "analysis_path": "analyses/sample_20261105T091447_6ffb72ea8c/analysis_20261105T091623_392006931c.json"
+    }
+  ]
+}

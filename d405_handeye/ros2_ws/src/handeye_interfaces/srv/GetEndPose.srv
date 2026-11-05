@@ -1,0 +1,20 @@
+string request_id
+string base_frame
+string end_frame
+bool require_fresh_sample
+---
+bool success
+string request_id
+string error_code
+string message
+geometry_msgs/TransformStamped pose
+builtin_interfaces/Time query_started_at
+builtin_interfaces/Time query_finished_at
+string timestamp_kind
+string source_kind
+bool source_age_known
+float64 source_age_ms
+bool has_motion_state
+bool is_moving
+bool sdk_call_count_known
+uint32 sdk_call_count

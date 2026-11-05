@@ -1,0 +1,7 @@
+string sample_id
+bool enabled
+---
+bool success
+uint64 dataset_revision
+string error_code
+string message

@@ -1,0 +1,17 @@
+{
+  "native_qt": true,
+  "preview_pose_requests": 0,
+  "capture_count": 20,
+  "pose_requests": 20,
+  "compute_pose_requests": 0,
+  "manual_orientation_corrections_using_test_truth": 20,
+  "result_methods": [
+    "PARK",
+    "TSAI"
+  ],
+  "training_count": 15,
+  "validation_count": 5,
+  "training_position_rmse_mm": 1.0879727726061923,
+  "validation_position_rmse_mm": 0.7533285478857755,
+  "hardware_tested": false
+}

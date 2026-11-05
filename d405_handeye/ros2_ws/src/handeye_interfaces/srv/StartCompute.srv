@@ -1,0 +1,6 @@
+string[] methods
+---
+bool accepted
+string job_id
+string error_code
+string message

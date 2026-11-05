@@ -1,0 +1,26 @@
+width: 848
+height: 480
+K:
+- - 620.0
+  - 0.0
+  - 424.0
+- - 0.0
+  - 620.0
+  - 240.0
+- - 0.0
+  - 0.0
+  - 1.0
+D:
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+- 0.0
+distortion_model: none
+profile:
+  source: SYNTHETIC_DEMO
+  stream: color
+  index: 0
+  format: bgr8
+  fps: 30
+  serial: DEMO

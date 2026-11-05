@@ -1,0 +1,95 @@
+schema_version: 2
+created_at: '2026-11-05T09:14:47.011632+00:00'
+config:
+  calibration:
+    type: eye_in_hand
+    algorithms:
+    - PARK
+    - TSAI
+    recommended_training_samples: 25
+  frames:
+    base: base_link
+    end: r_end_link
+    camera_optical: d405_color_optical_frame
+  camera:
+    backend: realsense
+    serial: ''
+    stream: color
+    stream_index: 0
+    width: 848
+    height: 480
+    fps: 30
+    format: bgr8
+    allow_profile_fallback: false
+    enable_global_time_if_supported: true
+  robot:
+    pose_source: service_request
+    service_name: /robot/get_end_pose
+    query_timeout_seconds: 1.5
+    allow_inverted_input: false
+    compat_topic: /robot/end_pose
+    compat_message_type: geometry_msgs/msg/TransformStamped
+    compat_subscription_timeout_seconds: 3.0
+    max_source_age_seconds: 2.0
+  sampling:
+    pairing_mode: manual_stationary_snapshot
+    pose_reads_per_capture: 1
+    capture_timeout_seconds: 5.0
+  board:
+    count_interpretation: inner_corners
+    cols: 9
+    rows: 6
+    square_length_m: 0.043
+    physical_origin: 固定同一物理角为 0，沿长边为 X、短边为 Y；人工核对编号
+  quality:
+    warning_pnp_rmse_px: 0.8
+    warning_hull_area_ratio: 0.03
+  validation:
+    warning_position_rmse_mm: 2.0
+    warning_rotation_rmse_deg: 0.5
+  storage:
+    root: ./handeye_data
+  ui:
+    preview_fps: 10
+board:
+  count_interpretation: inner_corners
+  cols: 9
+  rows: 6
+  square_length_m: 0.043
+  physical_origin: 固定同一物理角为 0，沿长边为 X、短边为 Y；人工核对编号
+camera:
+  width: 848
+  height: 480
+  K:
+  - - 620.0
+    - 0.0
+    - 424.0
+  - - 0.0
+    - 620.0
+    - 240.0
+  - - 0.0
+    - 0.0
+    - 1.0
+  D:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  distortion_model: none
+  profile:
+    source: SYNTHETIC_DEMO
+    stream: color
+    index: 0
+    format: bgr8
+    fps: 30
+    serial: DEMO
+frames:
+  base: base_link
+  end: r_end_link
+  camera_optical: d405_color_optical_frame
+geometry_fingerprint: 479327963c20c2e148b8cc8819af5f01cba42e7e86419b2e76b20d6cdd40d671
+robot_read_policy: capture_only
+environment:
+  kind: synthetic
+  seed: 314159

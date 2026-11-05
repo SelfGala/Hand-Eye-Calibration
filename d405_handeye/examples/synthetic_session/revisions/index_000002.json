@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "dataset_revision": 2,
+  "samples": [
+    {
+      "sample_id": "sample_20261105T091447_3324e4dab7",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_0",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_9d52c1d190",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_1",
+      "analysis_path": null
+    }
+  ]
+}

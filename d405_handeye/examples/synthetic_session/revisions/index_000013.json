@@ -1,0 +1,97 @@
+{
+  "schema_version": 2,
+  "dataset_revision": 13,
+  "samples": [
+    {
+      "sample_id": "sample_20261105T091447_3324e4dab7",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_0",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_9d52c1d190",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_1",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_43fb86e23e",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_2",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_0e1c87aad1",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_3",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_d4b024ab0a",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_4",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_3ec4c62ce9",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_5",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_056037576f",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_6",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_fccfc12954",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_7",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_83e9a74f30",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_8",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_dc1eaeb031",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_9",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_4c863d30e3",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_10",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_153a51bccc",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_11",
+      "analysis_path": null
+    },
+    {
+      "sample_id": "sample_20261105T091447_df9d3c288f",
+      "role": "train",
+      "enabled": true,
+      "label": "SYNTHETIC_12",
+      "analysis_path": null
+    }
+  ]
+}

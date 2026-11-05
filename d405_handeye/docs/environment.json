@@ -1,0 +1,50 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "architecture": "AMD64",
+  "python": "3.13.12 | packaged by Anaconda, Inc. | (main, Feb 24 2026, 16:05:56) [MSC v.1942 64 bit (AMD64)]",
+  "executable": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Scripts\\python.exe",
+  "ROS_DISTRO": null,
+  "RMW_IMPLEMENTATION": null,
+  "ROS_DOMAIN_ID": null,
+  "DISPLAY": null,
+  "WAYLAND_DISPLAY": null,
+  "robot_queries": 0,
+  "modules": {
+    "numpy": {
+      "available": true,
+      "version": "2.5.4",
+      "path": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Lib\\site-packages\\numpy\\__init__.py"
+    },
+    "scipy": {
+      "available": true,
+      "version": "1.18.1",
+      "path": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Lib\\site-packages\\scipy\\__init__.py"
+    },
+    "cv2": {
+      "available": true,
+      "version": "4.14.0",
+      "path": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Lib\\site-packages\\cv2\\__init__.py"
+    },
+    "yaml": {
+      "available": true,
+      "version": "6.0.3",
+      "path": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Lib\\site-packages\\yaml\\__init__.py"
+    },
+    "PyQt5.QtCore": {
+      "available": true,
+      "version": "5.15.11",
+      "path": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Lib\\site-packages\\PyQt5\\QtCore.pyd"
+    },
+    "pyrealsense2": {
+      "available": true,
+      "version": "2.59.1",
+      "path": "C:\\Users\\Zibo\\Documents\\Codex\\2026-11-05\\zhe-l\\work\\.venv\\Lib\\site-packages\\pyrealsense2\\__init__.py"
+    },
+    "rclpy": {
+      "available": false,
+      "error": "No module named 'rclpy'"
+    }
+  },
+  "same_interpreter_ros_and_sdk": false,
+  "l4t": null
+}

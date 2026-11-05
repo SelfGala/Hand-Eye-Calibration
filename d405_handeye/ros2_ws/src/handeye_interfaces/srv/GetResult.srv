@@ -1,0 +1,20 @@
+string result_id
+---
+bool success
+string result_id
+string method
+uint64 dataset_revision
+bool stale
+geometry_msgs/TransformStamped camera_to_end
+uint32 training_count
+uint32 validation_count
+bool has_validation_metrics
+float64 training_position_rmse_mm
+float64 training_rotation_rmse_deg
+float64 validation_position_rmse_mm
+float64 validation_rotation_rmse_deg
+string validation_state
+string pairing_mode
+string report_json
+string error_code
+string message

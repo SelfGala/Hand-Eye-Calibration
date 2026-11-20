@@ -13,7 +13,7 @@ from handeye_core.detection import from_corners, project
 from handeye_core.errors import HandeyeError
 from handeye_core.models import Board
 from handeye_core import ros_runtime
-from handeye_core.ros_runtime import MoveItMover, slow_down
+from handeye_core.ros_runtime import MoveItMover, joint_limits_from_urdf, joint_margin_violation, slow_down
 from handeye_core.solver import solve
 from handeye_core.synthetic import DemoRig, pose_at, scene
 from handeye_core.transforms import inverse, rotation_error_deg, transform
@@ -228,7 +228,8 @@ def moveit_mover(fraction=1.0, result=None):
         log.goals.append(goal)
         return done(NS(accepted=True, get_result_async=lambda: log.result, cancel_goal_async=cancel_goal))
     mover = MoveItMover(None, {"base": "base_link", "end": "l_end_link"},
-                        {"move_group": "left_arm", "velocity_scale": 0.1}, None)
+                        {"move_group": "left_arm", "velocity_scale": 0.1, "joint_limit_margin_rad": 0.1}, None)
+    mover.joint_limits = {}
     mover.pose_type = lambda: NS(position=NS(), orientation=NS())
     mover.plan_type = lambda: NS(header=NS(), start_state=NS())
     mover.goal_type = mover.stop_type = NS
@@ -309,3 +310,34 @@ def test_nothing_moves_when_move_group_cannot_be_told_to_stop(monkeypatch):
     with pytest.raises(HandeyeError) as error:
         mover.move(transform(), Event())
     assert error.value.code == "MOVE_GROUP_UNAVAILABLE" and log.requests == [] and log.goals == []
+
+
+def test_joint_command_stays_a_tenth_inside_the_urdf_limits():
+    limits = joint_limits_from_urdf("""
+        <robot name="arm">
+          <joint name="shoulder" type="revolute"><limit lower="-0.8" upper="0.8"/></joint>
+          <joint name="wrist" type="continuous"/>
+        </robot>
+    """)
+    assert limits == {"shoulder": (-0.8, 0.8)}
+    outside = NS(joint_names=["shoulder", "wrist"], points=[
+        NS(positions=[0.2, 1.2]),
+        NS(positions=[0.8, 1.2]),
+    ])
+    assert "0.800" in joint_margin_violation(outside, limits, 0.1)
+    assert outside.points[1].positions == [0.8, 1.2]  # refused, not rewritten
+    inside = NS(joint_names=["shoulder"], points=[NS(positions=[0.3]), NS(positions=[0.2])])
+    assert joint_margin_violation(inside, limits, 0.1) is None
+    # Already closer to the stop than the margin: may move back, not further out.
+    parked = NS(joint_names=["shoulder"], points=[NS(positions=[0.75]), NS(positions=[0.5])])
+    assert joint_margin_violation(parked, limits, 0.1) is None
+    further = NS(joint_names=["shoulder"], points=[NS(positions=[0.75]), NS(positions=[0.78])])
+    assert joint_margin_violation(further, limits, 0.1)
+
+
+def test_stamp_a_little_ahead_of_this_clock_is_still_fresh():
+    now = 1_000_000_000_000
+    fresh, age_ns = ros_runtime._fresh_stamp(now, now + 80_000_000, now, 2.0)
+    assert fresh and age_ns == -80_000_000
+    assert not ros_runtime._fresh_stamp(now, now + 2_000_000_000, now, 2.0)[0]
+    assert not ros_runtime._fresh_stamp(now, now - 100_000_000, now, 2.0)[0]

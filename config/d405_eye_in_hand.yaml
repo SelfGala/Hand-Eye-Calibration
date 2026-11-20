@@ -52,6 +52,8 @@ auto_motion:
   max_travel_m: 0.15
   move_group: left_arm
   velocity_scale: 0.1  # 相对 MoveIt 满速的比例
+  # 规划出的关节位置离 URDF 上下限都留出这么多。上限 0.8 rad 时，超过 0.7 rad 的路径不下发。
+  joint_limit_margin_rad: 0.1
 board:
   # 9×6 是黑白格的格数，内角点为 8×5，共 40 个。
   count_interpretation: squares

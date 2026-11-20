@@ -13,6 +13,17 @@ STOP_TOPIC = "/trajectory_execution_event"
 MOVEIT_SUCCESS = 1
 CONNECT_SECONDS = 3.0
 STOP_CONFIRM_SECONDS = 3.0
+# The robot computer's clock can lead this machine by tens of milliseconds.
+# A stamp that far ahead is still the current pose.
+CLOCK_SKEW_SECONDS = 0.5
+
+
+def _fresh_stamp(now_ns, stamp_ns, started_ns, max_age_s):
+    """True when the stamp belongs to this read and is not stale or implausibly ahead."""
+    age_ns = now_ns - stamp_ns
+    skew_ns = int(CLOCK_SKEW_SECONDS * 1e9)
+    fresh = stamp_ns >= started_ns and -skew_ns <= age_ns <= max_age_s * 1e9
+    return fresh, age_ns
 
 
 def _stamp(stamp):
@@ -131,10 +142,10 @@ class TopicPoseSource:
                 if value:
                     return
                 # A post-subscription message must carry a comparable, new ROS timestamp.
-                age_ns = self.node.get_clock().now().nanoseconds - _stamp_ns(message.header.stamp)
-                if _stamp_ns(message.header.stamp) < started_ros_ns or age_ns < 0:
-                    return
-                if age_ns > self.config["robot"]["max_source_age_seconds"] * 1e9:
+                fresh, age_ns = _fresh_stamp(self.node.get_clock().now().nanoseconds,
+                                             _stamp_ns(message.header.stamp), started_ros_ns,
+                                             self.config["robot"]["max_source_age_seconds"])
+                if not fresh:
                     return
                 try:
                     T, header = decode_transform(message, self.config, type_name.endswith("PoseStamped"))
@@ -232,9 +243,10 @@ class TfPoseSource:
             try:
                 message = self.buffer.lookup_transform(self.config["frames"]["base"],
                                                        self.config["frames"]["end"], self._time())
-                stamp_ns = _stamp_ns(message.header.stamp)
-                age_ns = self.node.get_clock().now().nanoseconds - stamp_ns
-                if stamp_ns < started_ns or age_ns < 0 or age_ns > self.config["robot"]["max_source_age_seconds"] * 1e9:
+                fresh, age_ns = _fresh_stamp(self.node.get_clock().now().nanoseconds,
+                                             _stamp_ns(message.header.stamp), started_ns,
+                                             self.config["robot"]["max_source_age_seconds"])
+                if not fresh:
                     cancel.wait(0.02)
                     continue
                 T, header = decode_transform(message, self.config)
@@ -257,6 +269,51 @@ def _wait(future, cancel, timeout, what):
         if time.monotonic() >= deadline:
             raise HandeyeError("MOVE_TIMEOUT", f"{what}超时")
     return future.result()
+
+
+def joint_limits_from_urdf(xml):
+    """Finite lower/upper limits from a URDF, in radians. Continuous joints are omitted."""
+    import xml.etree.ElementTree as ET
+    limits = {}
+    for joint in ET.fromstring(xml).iter("joint"):
+        if joint.get("type") in ("continuous", "fixed", "floating", "planar"):
+            continue
+        limit, name = joint.find("limit"), joint.get("name")
+        if limit is None or not name or limit.get("lower") is None or limit.get("upper") is None:
+            continue
+        limits[name] = (float(limit.get("lower")), float(limit.get("upper")))
+    return limits
+
+
+def joint_margin_violation(trajectory, limits, margin):
+    """Describe a command that goes past the joint-limit margin, or return None.
+
+    The trajectory is not rewritten. Changing a planned point makes its start differ
+    from the current joint state, and the controller then rejects it with CONTROL_FAILED (-4).
+    A limit of 0.8 rad and a margin of 0.1 rad means a command above 0.7 rad is refused.
+    The first point is the current state: if the arm is already closer to the stop than the
+    margin, later points may move back inside but must not go further out.
+    """
+    names = list(getattr(trajectory, "joint_names", []) or [])
+    points = list(getattr(trajectory, "points", []) or [])
+    if not names or not points or not limits or margin <= 0:
+        return None
+    for index, name in enumerate(names):
+        if name not in limits or index >= len(points[0].positions):
+            continue
+        lower, upper = limits[name]
+        low, high = lower + margin, upper - margin
+        if low > high:
+            return f"{name} 的行程小于 {2 * margin:.3f} rad，留不出 {margin:.3f} rad 余量"
+        start = points[0].positions[index]
+        allowed_low, allowed_high = min(low, start), max(high, start)
+        for point in points:
+            if index >= len(point.positions):
+                continue
+            position = point.positions[index]
+            if position < allowed_low - 1e-9 or position > allowed_high + 1e-9:
+                return f"{name} 指令 {position:.3f} rad 超出限位余量 [{low:.3f}, {high:.3f}]"
+    return None
 
 
 def slow_down(trajectory, scale):
@@ -291,6 +348,7 @@ class MoveItMover:
     def __init__(self, node, frames, options, group):
         self.node, self.frames, self.options, self.group = node, frames, options, group
         self.plan_client = self.execute_client = None
+        self.joint_limits = None
 
     def connect(self):
         if self.plan_client is None:
@@ -361,9 +419,14 @@ class MoveItMover:
             raise HandeyeError("MOVE_FAILED", f"move_group 没有接受规划请求，错误码 {plan.error_code.val}")
         if plan.fraction < 0.999:
             raise HandeyeError("UNREACHABLE", f"直线路径只能走完 {plan.fraction:.0%}")
-        duration = slow_down(plan.solution.joint_trajectory, self.options["velocity_scale"])
+        trajectory = plan.solution.joint_trajectory
+        duration = slow_down(trajectory, self.options["velocity_scale"])
         if duration <= 0:
             raise HandeyeError("UNREACHABLE", "规划结果没有可执行的时间参数")
+        violation = joint_margin_violation(trajectory, self._joint_limits(),
+                                           float(self.options.get("joint_limit_margin_rad", 0.1)))
+        if violation:
+            raise HandeyeError("UNREACHABLE", violation + "；未下发")
         goal = self.goal_type()
         goal.trajectory = plan.solution
         sending = self.execute_client.send_goal_async(goal)
@@ -382,7 +445,32 @@ class MoveItMover:
             self._stop(handle, finished)
             raise
         if result.error_code.val != MOVEIT_SUCCESS:
-            raise HandeyeError("MOVE_FAILED", f"轨迹执行失败，MoveIt 错误码 {result.error_code.val}；先确认手臂状态")
+            meaning = {-4: "控制器拒绝执行"}.get(result.error_code.val, "执行失败")
+            raise HandeyeError("MOVE_FAILED", f"轨迹{meaning}，MoveIt 错误码 {result.error_code.val}；先确认手臂状态")
+
+    def _joint_limits(self):
+        if self.joint_limits is not None:
+            return self.joint_limits
+        from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+        from std_msgs.msg import String
+        received, box = Event(), {}
+
+        def receive(message):
+            box["xml"] = message.data
+            received.set()
+
+        qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                         durability=DurabilityPolicy.TRANSIENT_LOCAL, history=HistoryPolicy.KEEP_LAST)
+        subscription = self.node.create_subscription(String, "/robot_description", receive, qos, callback_group=self.group)
+        try:
+            if not received.wait(CONNECT_SECONDS) or not box.get("xml"):
+                raise HandeyeError("JOINT_LIMITS", "未收到 /robot_description，不能按关节限位收缩指令")
+            self.joint_limits = joint_limits_from_urdf(box["xml"])
+            if not self.joint_limits:
+                raise HandeyeError("JOINT_LIMITS", "/robot_description 里没有带上下限的关节")
+            return self.joint_limits
+        finally:
+            self.node.destroy_subscription(subscription)
 
     def close(self):
         if self.execute_client is not None:

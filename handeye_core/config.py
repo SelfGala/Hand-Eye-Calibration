@@ -21,7 +21,8 @@ DEFAULTS = {
     "sampling": {"pairing_mode": "manual_stationary_snapshot", "pose_reads_per_capture": 1,
                  "capture_timeout_seconds": 5.0},
     "auto_motion": {"board_center_m": [0.0, 1.32, 0.0], "points": 60, "max_tilt_deg": 20.0,
-                    "max_roll_deg": 20.0, "max_travel_m": 0.15, "move_group": "left_arm", "velocity_scale": 0.1},
+                    "max_roll_deg": 20.0, "max_travel_m": 0.15, "move_group": "left_arm",
+                    "velocity_scale": 0.1, "joint_limit_margin_rad": 0.1},
     "board": {"count_interpretation": "inner_corners", "cols": 9, "rows": 6,
               "square_length_m": 0.043,
               "physical_origin": "固定同一物理角为 0，沿长边为 X、短边为 Y；人工核对编号"},
@@ -62,9 +63,10 @@ def load_config(path=None):
         raise HandeyeError("CONFIG", "采集超时和预览频率必须大于零")
     auto = cfg["auto_motion"]
     if (len(auto["board_center_m"]) != 3 or auto["points"] < 1 or not 0 < auto["max_tilt_deg"] < 90
-            or auto["max_travel_m"] <= 0 or not 0 < auto["velocity_scale"] <= 1):
+            or auto["max_travel_m"] <= 0 or not 0 < auto["velocity_scale"] <= 1
+            or auto["joint_limit_margin_rad"] < 0):
         raise HandeyeError("CONFIG", "auto_motion 需要三维 board_center_m、至少 1 个点、0 到 90 度之间的 max_tilt_deg、"
-                                     "正的 max_travel_m，velocity_scale 在 0 到 1 之间")
+                                     "正的 max_travel_m，velocity_scale 在 0 到 1 之间，joint_limit_margin_rad 不能为负")
     if cfg["robot"]["pose_source"] == "flexiv_sdk" and not str(cfg["robot"].get("serial", "")).strip():
         raise HandeyeError("CONFIG", "Flexiv 位姿源需要 robot.serial")
     return cfg

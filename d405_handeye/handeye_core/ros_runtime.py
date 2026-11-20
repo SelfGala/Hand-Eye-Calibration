@@ -159,44 +159,85 @@ class TopicPoseSource:
             self.node.destroy_subscription(sub)
 
 
+def _persistent_listener(base):
+    class PersistentTransformListener(base):
+        def __init__(self, buffer, node):
+            super().__init__(buffer, node, spin_thread=False)
+            self._closed = False
+
+        def unregister(self):
+            if self._closed:
+                return
+            self._closed = True
+            super().unregister()
+
+        def __del__(self):
+            try:
+                self.unregister()
+            except Exception:
+                pass
+
+    return PersistentTransformListener
+
+
 class TfPoseSource:
     def __init__(self, node, config, group):
+        from rclpy.time import Time
+        from tf2_ros import Buffer, TransformListener
         self.node, self.config = node, config
+        self._time = Time
+        self.buffer = Buffer()
+        # Keep /tf subscribed for the node lifetime. Destroying it on each capture races the executor,
+        # kills the spin thread, and every later lookup then fails with TF_TIMEOUT.
+        self.listener = _persistent_listener(TransformListener)(self.buffer, node)
+
+    def close(self):
+        listener = getattr(self, "listener", None)
+        self.listener = None
+        if listener is not None:
+            listener.unregister()
 
     def service_available(self, timeout=0.0):
-        return None
+        return self.probe(timeout)["available"]
+
+    def probe(self, timeout):
+        from tf2_ros import TransformException
+        base, end = self.config["frames"]["base"], self.config["frames"]["end"]
+        deadline = time.monotonic() + max(0.0, timeout)
+        while True:
+            try:
+                message = self.buffer.lookup_transform(base, end, self._time())
+                return {"available": True, "base": base, "end": end, "stamp": _stamp(message.header.stamp)}
+            except TransformException:
+                if time.monotonic() >= deadline:
+                    return {"available": False, "base": base, "end": end}
+                time.sleep(0.05)
 
     def read(self, request_id, timeout, cancel, on_request):
-        from rclpy.time import Time
-        from tf2_ros import Buffer, TransformListener, TransformException
+        from tf2_ros import TransformException
         started_ns = self.node.get_clock().now().nanoseconds
-        buffer = Buffer()
-        listener = TransformListener(buffer, self.node, spin_thread=False)
-        try:
-            deadline = time.monotonic() + self.config["robot"]["compat_subscription_timeout_seconds"]
-            while True:
-                if cancel.is_set():
-                    raise HandeyeError("CANCELLED", "已取消")
-                if time.monotonic() >= deadline:
-                    raise HandeyeError("TF_TIMEOUT", "未收到本轮 base 到 end 的新动态 TF")
-                try:
-                    message = buffer.lookup_transform(self.config["frames"]["base"],
-                                                       self.config["frames"]["end"], Time())
-                    stamp_ns = _stamp_ns(message.header.stamp)
-                    age_ns = self.node.get_clock().now().nanoseconds - stamp_ns
-                    if stamp_ns < started_ns or age_ns < 0 or age_ns > self.config["robot"]["max_source_age_seconds"] * 1e9:
-                        cancel.wait(0.02)
-                        continue
-                    T, header = decode_transform(message, self.config)
-                    return PoseReading(T, {"request_id": request_id, "header": header,
-                        "source_kind": "tf_compat", "timestamp_kind": "tf_header",
-                        "source_age_known": True, "source_age_ms": age_ns / 1e6,
-                        "has_motion_state": False, "sdk_call_count": None,
-                        "sdk_count_unavailable_reason": "TF publisher owns driver; cannot infer SDK calls"})
-                except TransformException:
+        deadline = time.monotonic() + self.config["robot"]["compat_subscription_timeout_seconds"]
+        while True:
+            if cancel.is_set():
+                raise HandeyeError("CANCELLED", "已取消")
+            if time.monotonic() >= deadline:
+                raise HandeyeError("TF_TIMEOUT", "未收到本轮 base 到 end 的新动态 TF")
+            try:
+                message = self.buffer.lookup_transform(self.config["frames"]["base"],
+                                                       self.config["frames"]["end"], self._time())
+                stamp_ns = _stamp_ns(message.header.stamp)
+                age_ns = self.node.get_clock().now().nanoseconds - stamp_ns
+                if stamp_ns < started_ns or age_ns < 0 or age_ns > self.config["robot"]["max_source_age_seconds"] * 1e9:
                     cancel.wait(0.02)
-        finally:
-            listener.unregister()
+                    continue
+                T, header = decode_transform(message, self.config)
+                return PoseReading(T, {"request_id": request_id, "header": header,
+                    "source_kind": "tf_compat", "timestamp_kind": "tf_header",
+                    "source_age_known": True, "source_age_ms": age_ns / 1e6,
+                    "has_motion_state": False, "sdk_call_count": None,
+                    "sdk_count_unavailable_reason": "TF publisher owns driver; cannot infer SDK calls"})
+            except TransformException:
+                cancel.wait(0.02)
 
 
 class RosRuntime:
@@ -226,12 +267,22 @@ class RosRuntime:
             self.node.destroy_node()
             rclpy.shutdown(context=self.context)
             raise
+        self._stop = Event()
+
         def spin():
             from rclpy.executors import ExternalShutdownException
-            try:
-                self.executor.spin()
-            except ExternalShutdownException:
-                pass
+            import traceback
+            while not self._stop.is_set():
+                try:
+                    self.executor.spin()
+                    return
+                except ExternalShutdownException:
+                    return
+                except Exception:
+                    if self._stop.is_set():
+                        return
+                    traceback.print_exc()
+                    time.sleep(0.05)
         self.thread = Thread(target=spin, name="ros-executor", daemon=True)
         self.thread.start()
 
@@ -309,8 +360,12 @@ class RosRuntime:
 
     def close(self):
         import rclpy
+        self._stop.set()
         self.executor.shutdown(timeout_sec=2)
         self.thread.join(timeout=2)
+        closer = getattr(self.pose_source, "close", None)
+        if closer:
+            closer()
         self.node.destroy_node()
         if self.context.ok():
             rclpy.shutdown(context=self.context)

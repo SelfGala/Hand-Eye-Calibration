@@ -31,6 +31,26 @@ def from_pose(translation, quaternion_xyzw):
     return transform(Rotation.from_quat(q / np.linalg.norm(q)).as_matrix(), translation)
 
 
+def pose_components(T):
+    T = checked(T)
+    return {"translation_m": T[:3, 3].tolist(),
+            "quaternion_xyzw": Rotation.from_matrix(T[:3, :3]).as_quat().tolist()}
+
+
+def tf_snapshot(G, metadata, frames):
+    """Explicit base-to-end snapshot stored with the image so a session can resume."""
+    header = (metadata or {}).get("header") or {}
+    pose = pose_components(G)
+    return {"parent_frame": header.get("frame_id") or frames["base"],
+            "child_frame": header.get("child_frame_id") or frames["end"],
+            "stamp": header.get("stamp"),
+            "translation_m": pose["translation_m"],
+            "quaternion_xyzw": pose["quaternion_xyzw"],
+            "source_kind": (metadata or {}).get("source_kind"),
+            "timestamp_kind": (metadata or {}).get("timestamp_kind"),
+            "input_inverted": bool(header.get("input_inverted", False))}
+
+
 def inverse(T):
     T = checked(T)
     R = T[:3, :3].T

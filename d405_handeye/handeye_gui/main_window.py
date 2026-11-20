@@ -12,7 +12,8 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QVBoxLayout, QHBoxLay
     QTableWidgetItem, QAbstractItemView, QTextEdit, QTabWidget, QFileDialog, QMessageBox, QHeaderView)
 from handeye_core.models import Board
 from handeye_core.detection import detect, overlay
-from handeye_core.dataset import read_image
+from handeye_core.dataset import read_image, previous_session
+from handeye_core.errors import HandeyeError
 from .workflow import guidance
 
 
@@ -64,8 +65,10 @@ class MainWindow(QMainWindow):
         self.square.setValue(config.square_length_m * 1000)
         self.new_button = QPushButton("按参数新建会话")
         self.new_button.clicked.connect(self.new_session)
+        self.resume_button = QPushButton("继续上次标定")
+        self.resume_button.clicked.connect(self.resume_previous)
         for w in (QLabel("棋盘"), self.interpretation, self.cols, QLabel("×"), self.rows,
-                  QLabel("单格边长"), self.square, self.new_button):
+                  QLabel("单格边长"), self.square, self.new_button, self.resume_button):
             board_line.addWidget(w)
         board_line.addStretch()
         layout.addLayout(board_line)
@@ -155,6 +158,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.task_status)
         self.describe_board()
         self.refresh_samples()
+        self._announce_previous()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.timer.start(max(30, int(1000 / controller.config["ui"]["preview_fps"])))
@@ -213,8 +217,61 @@ class MainWindow(QMainWindow):
             self.viewing_sample = False
             self.refresh_samples()
             self.describe_board()
-            self.task_status.setText("新会话已创建；原会话保留在磁盘")
+            self.task_status.setText("新会话已创建；原会话保留在磁盘，可点“继续上次标定”回去")
         self.run_action(action)
+
+    def sync_board_widgets(self):
+        board = self.controller.dataset.board
+        widgets = (self.interpretation, self.cols, self.rows, self.square)
+        for widget in widgets:
+            widget.blockSignals(True)
+        self.interpretation.setCurrentIndex(0 if board.count_interpretation == "inner_corners" else 1)
+        self.cols.setValue(board.cols)
+        self.rows.setValue(board.rows)
+        self.square.setValue(board.square_length_m * 1000)
+        for widget in widgets:
+            widget.blockSignals(False)
+        self.describe_board()
+
+    def resume_previous(self):
+        def action():
+            path = previous_session(self.controller.config["storage"]["root"], self.controller.dataset.path)
+            report = self.controller.resume_session(path)
+            if self.demo and self.controller.camera is not None:
+                self.controller.camera.board = self.controller.dataset.board
+                self.controller.camera._image_index = -1
+            self.sync_board_widgets()
+            self.viewing_sample = False
+            self.last_session_path = str(self.controller.dataset.path)
+            with self.controller.lock:
+                results = list(self.controller.results.items())
+            self.result_combo.blockSignals(True)
+            self.result_combo.clear()
+            for result_id, result in results:
+                self.result_combo.addItem(result["method"] + " · " + result_id, result_id)
+            if results:
+                self.result_combo.setCurrentIndex(len(results) - 1)
+            self.result_combo.blockSignals(False)
+            self.selected_result_id = ""
+            self.last_revision = -1
+            self.refresh_samples()
+            if not results:
+                self.result_text.setPlainText("已继续会话，尚未计算")
+            recovered, failed = len(report["recovered"]), len(report["failed"])
+            text = f"已继续 {path.name}，当前 {len(self.samples)} 组样本"
+            if recovered:
+                text += f"，从缓存恢复 {recovered} 组"
+            if failed:
+                text += f"，仍有 {failed} 组缓存在 cache/pending（识别未通过）"
+            self.task_status.setText(text)
+        self.run_action(action)
+
+    def _announce_previous(self):
+        try:
+            path = previous_session(self.controller.config["storage"]["root"], self.controller.dataset.path)
+        except HandeyeError:
+            return
+        self.task_status.setText(f"准备就绪；可继续上次标定 {path.name}")
 
     def capture(self):
         def action():
@@ -275,12 +332,14 @@ class MainWindow(QMainWindow):
             self.table.item(row, 0).setIcon(icon)
             self.table.setRowHeight(row, 56)
         self.guide.setText(guidance(self.samples, self.controller.config["calibration"]["recommended_training_samples"]))
+        pending = self.controller.dataset.pending_captures()
         camera = self.controller.dataset.camera
         origin = "合成演示" if self.demo else ("离线查看" if self.controller.camera is None else "RealSense SDK")
         source = self.samples[-1].get("robot", {}).get("source_kind", "尚未采样") if self.samples else "尚未采样"
         source = {"replay": "模拟 / 回放", "sdk_on_request": "本次 SDK 读取", "topic_compat": "状态话题",
                   "tf_compat": "本轮 TF", "existing_driver_snapshot": "驱动快照"}.get(source, source)
-        self.info.setText(f"{origin} | {camera.width}×{camera.height} | 按需读取 | 数据版本 {self.last_revision} | 最近位姿来源 {source}\n"
+        pending_text = f" | 待恢复缓存 {len(pending)}" if pending else ""
+        self.info.setText(f"{origin} | {camera.width}×{camera.height} | 按需读取 | 数据版本 {self.last_revision} | 最近位姿来源 {source}{pending_text}\n"
                           f"会话：{self.controller.dataset.path}")
         self.display_result()
 
@@ -310,10 +369,10 @@ class MainWindow(QMainWindow):
             self.selected_result_id = ""
             self.last_revision = -1
             self.viewing_sample = False
-            self.result_text.setPlainText("新会话，尚未计算")
         busy = bool(controller.active_job)
         self.capture_button.setEnabled(not busy and controller.camera is not None)
-        for button in (self.new_button, self.enabled_button, self.role_button, self.flip_button, self.compute_button):
+        for button in (self.new_button, self.resume_button, self.enabled_button, self.role_button,
+                       self.flip_button, self.compute_button):
             button.setEnabled(not busy)
         self.cancel_button.setEnabled(busy)
         if self.current_job:
@@ -342,18 +401,26 @@ class MainWindow(QMainWindow):
             return
         if self.preview_future is not None and self.preview_future.done():
             try:
-                image, text = self.preview_future.result()
-                self.set_image(image)
+                image, text, detected = self.preview_future.result()
                 self.detection_info.setText(text)
+                # 相机一直在出新帧，不能要求帧号相同，否则角点和坐标轴永远画不上去。
+                self._overlay = image if detected else None
             except Exception as exc:
                 self.detection_info.setText(str(exc))
+                self._overlay = None
             self.preview_future = None
+        frame = controller.camera.latest()
+        if frame is None:
+            error = getattr(controller.camera, "error", None)
+            self.detection_info.setText(error or "等待首帧")
+            if error:
+                self.image.setText(error)
+            return
+        if self.show_overlay.isChecked() and getattr(self, "_overlay", None) is not None:
+            self.set_image(self._overlay)
+        else:
+            self.set_image(frame.image)
         if self.preview_future is None:
-            frame = controller.camera.latest()
-            if frame is None:
-                error = getattr(controller.camera, "error", None)
-                self.detection_info.setText(error or "等待首帧")
-                return
             board, camera = controller.dataset.board, controller.dataset.camera
             flip, show = self.flip.isChecked(), self.show_overlay.isChecked()
             def process():
@@ -362,9 +429,9 @@ class MainWindow(QMainWindow):
                     image = overlay(frame.image, analysis, board, camera) if show else frame.image
                     text = (f"角点 {analysis['corner_count']} · PnP {analysis['pnp_rmse_px']:.3f} px\n"
                             "核对 0 点；保持不动后点击拍照")
-                    return image, text
+                    return image, text, True
                 except Exception as exc:
-                    return frame.image, str(exc)
+                    return frame.image, str(exc), False
             self.preview_future = self.preview_pool.submit(process)
 
     def display_result(self, *args):
@@ -384,7 +451,12 @@ class MainWindow(QMainWindow):
             if not metrics["count"]:
                 text += f"{title}：未验证\n"
                 continue
-            text += (f"{title} {metrics['count']} 组：位置 RMSE {metrics['position_mm']['rmse']:.4f} mm，"
+            axes = metrics.get("position_mm_xyz") or {}
+            axis_text = ""
+            if all(axes.get(name) for name in ("x", "y", "z")):
+                axis_text = "（" + "，".join(
+                    f"{name.upper()} {axes[name]['rmse']:.4f}" for name in ("x", "y", "z")) + "）"
+            text += (f"{title} {metrics['count']} 组：位置 RMSE {metrics['position_mm']['rmse']:.4f} mm{axis_text}，"
                      f"旋转 RMSE {metrics['rotation_deg']['rmse']:.4f}°\n")
             if metrics["predicted_reprojection_px"]:
                 text += f"  手眼链预测像素 RMSE {metrics['predicted_reprojection_px']['rmse']:.4f} px\n"

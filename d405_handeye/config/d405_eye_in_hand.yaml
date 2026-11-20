@@ -1,40 +1,50 @@
 calibration:
   type: eye_in_hand
   algorithms: [PARK, TSAI]
-  recommended_training_samples: 25
+  recommended_training_samples: 30
+# 右臂末端。相机若装在左臂，把 end 改成 l_end_link。
 frames:
   base: base_link
   end: r_end_link
   camera_optical: d405_color_optical_frame
 camera:
   backend: realsense
-  serial: ""
+  serial: "230322272193"
   stream: color
   stream_index: 0
-  width: 848
-  height: 480
+  width: 1280
+  height: 720
   fps: 30
   format: bgr8
   allow_profile_fallback: false
   enable_global_time_if_supported: true
+  # 原图上的 OpenCV 内参。PnP 使用 K 和 D，不用去畸变后的 P。
+  distortion_model: opencv
+  K:
+    - [657.697487564434, 0.0, 638.5992678703022]
+    - [0.0, 657.4415697876618, 365.14810012910425]
+    - [0.0, 0.0, 1.0]
+  D: [-0.05524762453945824, 0.06565775812676004, -0.0007941365118372136, 0.0011792331264988433, -0.024076762264144173]
 robot:
-  pose_source: service_request
+  # 现场没有 /robot/get_end_pose，末端位姿来自 /tf：base_link -> r_end_link。
+  pose_source: tf_snapshot
   service_name: /robot/get_end_pose
   query_timeout_seconds: 1.5
   allow_inverted_input: false
-  compat_topic: /robot/end_pose
+  compat_topic: /tf
   compat_message_type: geometry_msgs/msg/TransformStamped
-  compat_subscription_timeout_seconds: 3.0
+  compat_subscription_timeout_seconds: 5.0
   max_source_age_seconds: 2.0
 sampling:
   pairing_mode: manual_stationary_snapshot
   pose_reads_per_capture: 1
   capture_timeout_seconds: 5.0
 board:
-  count_interpretation: inner_corners
+  # 9×6 是黑白格的格数，内角点为 8×5，共 40 个。
+  count_interpretation: squares
   cols: 9
   rows: 6
-  square_length_m: 0.043
+  square_length_m: 0.05
   physical_origin: 固定同一物理角为0，沿长边为X、短边为Y；人工核对编号
 quality:
   warning_pnp_rmse_px: 0.8

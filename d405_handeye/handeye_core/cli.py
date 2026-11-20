@@ -17,7 +17,9 @@ def main(argv=None):
     gui = sub.add_parser("gui", help="原生桌面窗口")
     gui.add_argument("--config")
     gui.add_argument("--demo", action="store_true", help="显式合成相机和位姿，不连接硬件")
-    gui.add_argument("--session", help="打开保存的会话；离线查看与重算")
+    gui.add_argument("--session", help="打开保存的会话；离线查看与重算，不连接相机和机械臂")
+    gui.add_argument("--resume", nargs="?", const="", default=None,
+                     help="继续已有会话并保持相机和位姿可用；省略路径时使用最近一次有样本或缓存的会话")
     gui.add_argument("--smoke-output", help=argparse.SUPPRESS)
     offline = sub.add_parser("offline", help="从保存的数据复算")
     offline.add_argument("--session", required=True)

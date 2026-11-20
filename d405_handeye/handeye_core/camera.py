@@ -7,6 +7,56 @@ from .errors import HandeyeError
 from .models import CameraModel, Frame
 
 
+def _has_configured_intrinsics(cfg):
+    has_k, has_d = "K" in cfg, "D" in cfg
+    if has_k != has_d:
+        raise HandeyeError("CONFIG", "K 和 D 需要同时写在配置里，或者都不写并使用相机读到的内参")
+    return has_k and has_d
+
+
+def _distortion_name(model):
+    return str(model).split(".")[-1].strip().lower()
+
+
+def camera_model_from_realsense(intrinsics, profile):
+    """Copy the opened stream's intrinsics. Coefficients are not rewritten into another model."""
+    supported = {
+        "none": "none",
+        "brown_conrady": "brown_conrady",
+        "inverse_brown_conrady": "inverse_brown_conrady",
+    }
+    name = _distortion_name(intrinsics.model)
+    if name not in supported:
+        raise HandeyeError("CAMERA_MODEL_UNSUPPORTED",
+                           f"相机报告的畸变模型是 {name}，只按原样接受 none、brown_conrady、inverse_brown_conrady")
+    distortion_model = supported[name]
+    coeffs = [float(value) for value in list(intrinsics.coeffs)]
+    if distortion_model == "none":
+        coeffs = [0.0, 0.0, 0.0, 0.0, 0.0]
+    elif len(coeffs) < 5:
+        raise HandeyeError("CAMERA_MODEL", "相机内参畸变系数不足 5 个")
+    else:
+        coeffs = coeffs[:5]
+    matrix = [[float(intrinsics.fx), 0.0, float(intrinsics.ppx)],
+              [0.0, float(intrinsics.fy), float(intrinsics.ppy)],
+              [0.0, 0.0, 1.0]]
+    return CameraModel(int(intrinsics.width), int(intrinsics.height), matrix, coeffs, distortion_model,
+                       {**profile, "intrinsics_source": "device"})
+
+
+def camera_model_from_config(cfg, profile):
+    """Build the active camera model from an explicit config file."""
+    missing = [key for key in ("K", "D", "distortion_model") if key not in cfg]
+    if missing:
+        raise HandeyeError("CONFIG", "相机配置缺少 " + "、".join(missing) + "。要使用这份配置内参时，K、D 和畸变模型都要写上")
+    matrix = np.asarray(cfg["K"], dtype=float)
+    if matrix.size != 9:
+        raise HandeyeError("CONFIG", "K 必须是 3×3 或 9 个数")
+    distortion = np.asarray(cfg["D"], dtype=float).reshape(-1)
+    return CameraModel(cfg["width"], cfg["height"], matrix.reshape(3, 3).tolist(),
+                       distortion.tolist(), str(cfg["distortion_model"]), profile)
+
+
 def realsense_devices():
     import pyrealsense2 as rs
     devices = []
@@ -43,6 +93,7 @@ class RealSenseCamera:
         cfg = self.config
         if cfg["format"] not in ("bgr8", "rgb8", "y8"):
             raise HandeyeError("CAMERA_FORMAT", "支持 bgr8、rgb8 或 y8 图像格式")
+        use_config_intrinsics = _has_configured_intrinsics(cfg)
         devices = realsense_devices()
         if not devices:
             raise HandeyeError("CAMERA_NOT_FOUND", "未发现 RealSense 相机")
@@ -78,20 +129,26 @@ class RealSenseCamera:
                     if sensor.supports(rs.option.global_time_enabled):
                         sensor.set_option(rs.option.global_time_enabled, 1)
             profile = active.get_stream(getattr(rs.stream, selected["stream"]), selected["index"])
-            v = profile.as_video_stream_profile()
-            intr = v.get_intrinsics()
-            distortion = str(intr.model).split(".")[-1]
+            opened = profile.as_video_stream_profile()
             try:
                 sdk_version = version("pyrealsense2")
             except PackageNotFoundError:
                 sdk_version = getattr(rs, "__version__", "unknown")
-            self.model = CameraModel(intr.width, intr.height,
-                                     [[intr.fx, 0, intr.ppx], [0, intr.fy, intr.ppy], [0, 0, 1]],
-                                     list(intr.coeffs), distortion,
-                                     {**selected, "serial": device["serial"], "firmware": device["firmware"],
-                                      "device_name": device["name"], "sdk_version": sdk_version,
-                                      "fallback_used": selected != {"stream": cfg["stream"], "index": cfg["stream_index"],
-                                          "format": cfg["format"], "width": cfg["width"], "height": cfg["height"], "fps": cfg["fps"]}})
+            fallback_used = selected != {"stream": cfg["stream"], "index": cfg["stream_index"],
+                                         "format": cfg["format"], "width": cfg["width"], "height": cfg["height"], "fps": cfg["fps"]}
+            profile_meta = {**selected, "serial": device["serial"], "firmware": device["firmware"],
+                            "device_name": device["name"], "sdk_version": sdk_version,
+                            "fallback_used": fallback_used, "width": opened.width(), "height": opened.height()}
+            if use_config_intrinsics:
+                if (opened.width(), opened.height()) != (cfg["width"], cfg["height"]):
+                    raise HandeyeError("PROFILE_UNSUPPORTED",
+                                       f"图像是 {opened.width()}×{opened.height()}，配置内参对应 {cfg['width']}×{cfg['height']}")
+                self.model = camera_model_from_config(cfg, {**profile_meta, "intrinsics_source": "config"})
+            else:
+                intrinsics = opened.get_intrinsics()
+                if (intrinsics.width, intrinsics.height) != (opened.width(), opened.height()):
+                    raise HandeyeError("CAMERA_MODEL", "相机内参分辨率和实际图像不一致")
+                self.model = camera_model_from_realsense(intrinsics, profile_meta)
         except BaseException:
             pipeline.stop()
             raise
@@ -103,12 +160,18 @@ class RealSenseCamera:
 
     def _loop(self):
         import pyrealsense2 as rs
+        stream = getattr(rs.stream, self.model.profile["stream"])
+        index = self.model.profile["index"]
         try:
             while not self._stop.is_set():
                 frames = self.pipeline.wait_for_frames(1000)
-                frame = frames.first_or_default(getattr(rs.stream, self.model.profile["stream"]),
-                                                 self.model.profile["index"])
-                if not frame:
+                frame = None
+                for item in frames:
+                    profile = item.get_profile()
+                    if profile.stream_type() == stream and profile.stream_index() == index:
+                        frame = item
+                        break
+                if frame is None:
                     continue
                 image = np.asanyarray(frame.get_data()).copy()
                 if self.model.profile["format"] == "rgb8":

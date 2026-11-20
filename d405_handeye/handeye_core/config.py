@@ -13,7 +13,7 @@ DEFAULTS = {
     "camera": {"backend": "realsense", "serial": "", "stream": "color", "stream_index": 0,
                "width": 848, "height": 480, "fps": 30, "format": "bgr8",
                "allow_profile_fallback": False, "enable_global_time_if_supported": True},
-    "robot": {"pose_source": "service_request", "service_name": "/robot/get_end_pose",
+    "robot": {"pose_source": "service_request", "serial": "", "service_name": "/robot/get_end_pose",
               "query_timeout_seconds": 1.5, "allow_inverted_input": False,
               "compat_topic": "/robot/end_pose",
               "compat_message_type": "geometry_msgs/msg/TransformStamped",
@@ -58,6 +58,8 @@ def load_config(path=None):
             raise HandeyeError("CONFIG", f"{name} 必须大于零")
     if cfg["sampling"]["capture_timeout_seconds"] <= 0 or cfg["ui"]["preview_fps"] <= 0:
         raise HandeyeError("CONFIG", "采集超时和预览频率必须大于零")
+    if cfg["robot"]["pose_source"] == "flexiv_sdk" and not str(cfg["robot"].get("serial", "")).strip():
+        raise HandeyeError("CONFIG", "Flexiv 位姿源需要 robot.serial")
     return cfg
 
 

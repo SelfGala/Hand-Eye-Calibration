@@ -3,8 +3,24 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .venv/
+.DS_Store
+
+# captured sessions and calibration outputs
 handeye_data/
+result/
+
+# ROS build artifacts
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
 
+# raw recordings and point clouds
+*.bag
+*.db3
+*.mcap
+*.pcd
+*.ply
+*.npy
+*.npz
+*.h5
+*.hdf5

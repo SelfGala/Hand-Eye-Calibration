@@ -5,11 +5,11 @@ from threading import Event, RLock
 import time
 import json
 import numpy as np
-from .dataset import Dataset, new_id, read_image
+from .dataset import Dataset, new_id, read_image, remember_session
 from .detection import detect, from_corners
 from .errors import HandeyeError
 from .solver import solve
-from .transforms import checked
+from .transforms import checked, tf_snapshot
 
 
 @dataclass
@@ -39,6 +39,13 @@ class Controller:
         self.active_job = None
         self.cancel_event = Event()
         self.closed = False
+        self._camera_compatible(self.dataset)
+        self.recover_pending()
+        self._load_results()
+
+    def _load_results(self):
+        self.results = {}
+        self.latest_result_id = ""
         for path in sorted(self.dataset.path.glob("results/*/report.json")):
             if path.parent.name.startswith(".pending_"):
                 continue
@@ -102,31 +109,106 @@ class Controller:
             if remaining <= 0:
                 raise HandeyeError("CAPTURE_TIMEOUT", "本轮采样超时")
             frame = self.camera.fresh(response_ns, remaining, cancel)
-            analysis = detect(frame.image, self.dataset.board, self.dataset.camera, flip)
-            warnings = []
-            if analysis["pnp_rmse_px"] > self.config["quality"]["warning_pnp_rmse_px"]:
-                warnings.append("PnP 重投影误差较大；已保存，可手动停用")
-            if analysis["hull_area_ratio"] < self.config["quality"]["warning_hull_area_ratio"]:
-                warnings.append("棋盘覆盖率较低；已保存，可调整取景")
-            if reading.metadata.get("has_motion_state") and reading.metadata.get("is_moving"):
-                warnings.append("来源标记运动中；仅记录，不阻止拍照")
-            self._cancelled(cancel)
-            record = {"schema_version": 2, "role": role, "label": label, "G": G.tolist(),
-                      "analysis": analysis, "robot": reading.metadata, "camera_frame": frame.metadata(),
-                      "transaction": {"request_id": request_id, "started_monotonic_ns": start_ns,
-                          "pose_returned_monotonic_ns": response_ns, "pose_request_count": job.pose_request_count,
-                          "sdk_call_count": reading.metadata.get("sdk_call_count"),
-                          "sdk_count_unavailable_reason": reading.metadata.get("sdk_count_unavailable_reason"),
-                          "pairing_mode": "manual_stationary_snapshot", "stability_check": "manual_hold",
-                          "shared_clock_delta_ms": None,
-                          "local_response_to_frame_ms": (frame.host_monotonic_ns - response_ns) / 1e6},
-                      "warnings": warnings}
-            # Cancel is serialized with the final commit, so cancellation cannot create a later sample.
-            with self.lock:
+            payload = {"role": role, "label": label, "flip": bool(flip), "G": G.tolist(),
+                       "tf": tf_snapshot(G, reading.metadata, self.config["frames"]),
+                       "robot": reading.metadata, "camera_frame": frame.metadata(),
+                       "transaction": {"request_id": request_id, "started_monotonic_ns": start_ns,
+                           "pose_returned_monotonic_ns": response_ns, "pose_request_count": job.pose_request_count,
+                           "sdk_call_count": reading.metadata.get("sdk_call_count"),
+                           "sdk_count_unavailable_reason": reading.metadata.get("sdk_count_unavailable_reason"),
+                           "pairing_mode": "manual_stationary_snapshot", "stability_check": "manual_hold",
+                           "shared_clock_delta_ms": None,
+                           "local_response_to_frame_ms": (frame.host_monotonic_ns - response_ns) / 1e6}}
+            # Durable journal: image + arm pose + TF exist even if detection or the process stops.
+            cache_id = self.dataset.stage_capture(frame.image, payload)
+            try:
                 self._cancelled(cancel)
-                job.sample_id = self.dataset.add(frame.image, record)
-            job.message = "已保存，可以移动到下一姿态" + ("；" + "；".join(warnings) if warnings else "")
+                analysis = detect(frame.image, self.dataset.board, self.dataset.camera, flip)
+                record = self._sample_record(payload, analysis)
+                # Cancel is serialized with the final commit, so cancellation cannot create a later sample.
+                with self.lock:
+                    self._cancelled(cancel)
+                    job.sample_id = self.dataset.add(frame.image, record)
+                    self.dataset.finalize_cache(cache_id)
+            except Exception as exc:
+                self._keep_or_drop_cache(cache_id, exc)
+                raise
+            job.message = "已保存，可以移动到下一姿态" + ("；" + "；".join(record["warnings"]) if record["warnings"] else "")
         return self._submit("capture", execute)
+
+    def _warnings(self, analysis, metadata):
+        warnings = []
+        if analysis["pnp_rmse_px"] > self.config["quality"]["warning_pnp_rmse_px"]:
+            warnings.append("PnP 重投影误差较大；已保存，可手动停用")
+        if analysis["hull_area_ratio"] < self.config["quality"]["warning_hull_area_ratio"]:
+            warnings.append("棋盘覆盖率较低；已保存，可调整取景")
+        if metadata.get("has_motion_state") and metadata.get("is_moving"):
+            warnings.append("来源标记运动中；仅记录，不阻止拍照")
+        return warnings
+
+    def _sample_record(self, payload, analysis):
+        return {"schema_version": 2, "role": payload["role"], "label": payload.get("label", ""),
+                "G": payload["G"], "tf": payload["tf"], "analysis": analysis,
+                "robot": payload["robot"], "camera_frame": payload["camera_frame"],
+                "transaction": payload["transaction"], "warnings": self._warnings(analysis, payload["robot"])}
+
+    def _keep_or_drop_cache(self, cache_id, exc):
+        if isinstance(exc, HandeyeError) and exc.code == "CANCELLED":
+            self.dataset.discard_cache(cache_id)
+            return
+        code = getattr(exc, "code", "INTERNAL_ERROR")
+        self.dataset.mark_cache_error(cache_id, code, str(exc))
+        raise HandeyeError(code, f"{exc}；原图、机械臂位姿和 TF 已写入缓存，可继续该会话恢复") from exc
+
+    def recover_pending(self):
+        """Commit cached captures that never became samples. Failed detections stay on disk."""
+        recovered, failed = [], []
+        for item in self.dataset.pending_captures():
+            request_id = item.get("transaction", {}).get("request_id")
+            existing = self.dataset.find_sample_by_request(request_id)
+            if existing:
+                self.dataset.finalize_cache(item["capture_id"])
+                recovered.append({"capture_id": item["capture_id"], "sample_id": existing, "already_committed": True})
+                continue
+            try:
+                image = read_image(item["image_path"])
+                analysis = detect(image, self.dataset.board, self.dataset.camera, item.get("flip", False))
+                sample_id = self.dataset.add(image, self._sample_record(item, analysis))
+                self.dataset.finalize_cache(item["capture_id"])
+                recovered.append({"capture_id": item["capture_id"], "sample_id": sample_id, "already_committed": False})
+            except Exception as exc:
+                self.dataset.mark_cache_error(item["capture_id"], getattr(exc, "code", "INTERNAL_ERROR"), str(exc))
+                failed.append({"capture_id": item["capture_id"],
+                               "error_code": getattr(exc, "code", "INTERNAL_ERROR"), "error": str(exc)})
+        return {"recovered": recovered, "failed": failed}
+
+    def _camera_compatible(self, dataset):
+        live = getattr(self.camera, "model", None)
+        if live is None:
+            return
+        saved = dataset.camera
+        if (live.width, live.height, live.distortion_model) != (saved.width, saved.height, saved.distortion_model):
+            raise HandeyeError("RESUME_CAMERA", "当前相机分辨率或畸变模型与会话不一致，请新建会话")
+        if not np.allclose(live.K, saved.K, atol=0.5) or not np.allclose(np.asarray(live.D), np.asarray(saved.D), atol=1e-4):
+            raise HandeyeError("RESUME_CAMERA", "当前相机内参与会话差异过大，请新建会话")
+
+    def resume_session(self, path):
+        with self.lock:
+            self._editable()
+            dataset = Dataset(path)
+            saved = dataset.session["config"]
+            if saved["frames"] != self.config["frames"]:
+                raise HandeyeError("RESUME_MISMATCH", "会话坐标系与当前运行配置不一致")
+            if saved["robot"]["pose_source"] != self.config["robot"]["pose_source"]:
+                raise HandeyeError("RESUME_MISMATCH", "会话位姿来源与当前运行配置不一致")
+            self._camera_compatible(dataset)
+            self.dataset = dataset
+            self.config = deepcopy(saved)
+            remember_session(self.config["storage"]["root"], dataset.path)
+        report = self.recover_pending()
+        with self.lock:
+            self._load_results()
+        return report
 
     def _count(self, job):
         with self.lock:

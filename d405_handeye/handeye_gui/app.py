@@ -20,24 +20,40 @@ def launch(args, ros_args):
     from .fonts import configure_fonts
     configure_fonts(app)
     config = load_config(args.config)
-    camera = runtime = controller = None
+    camera = runtime = controller = source = None
     try:
+        resume_path = None
+        if args.resume is not None:
+            from handeye_core.dataset import resolve_resume
+            resume_path = resolve_resume(args.resume, config["storage"]["root"])
+        if args.session and resume_path is not None:
+            raise HandeyeError("RESUME", "不能同时离线打开和继续标定")
         if args.session:
             dataset = Dataset(args.session)
             config = dataset.session["config"]
+            controller = Controller(config, dataset, None, None)
         else:
+            if resume_path is not None:
+                dataset = Dataset(resume_path)
+                config = dataset.session["config"]
             if args.demo:
                 from handeye_core.synthetic import DemoRig
                 camera = DemoRig(Board(**config["board"]))
                 source = camera
+            elif config["robot"]["pose_source"] == "flexiv_sdk":
+                from handeye_core.camera import RealSenseCamera
+                from handeye_core.flexiv_pose import FlexivPoseSource
+                source = FlexivPoseSource(config)
+                camera = RealSenseCamera(config["camera"]).start()
             else:
                 from handeye_core.camera import RealSenseCamera
                 from handeye_core.ros_runtime import RosRuntime
                 runtime = RosRuntime(config, ros_args)
                 source = runtime.pose_source
                 camera = RealSenseCamera(config["camera"]).start()
-            dataset = Dataset.create(config["storage"]["root"], config, camera.model, diagnose(config))
-        controller = Controller(config, dataset, camera, None if args.session else source)
+            if resume_path is None:
+                dataset = Dataset.create(config["storage"]["root"], config, camera.model, diagnose(config))
+            controller = Controller(config, dataset, camera, source)
         if runtime:
             runtime.bind(controller)
         window = MainWindow(controller, args.demo)
@@ -58,6 +74,10 @@ def launch(args, ros_args):
             controller.pool.shutdown(wait=True)
         if camera:
             camera.close()
+        if runtime is None and source is not None and source is not camera:
+            closer = getattr(source, "close", None)
+            if closer:
+                closer()
         if runtime:
             runtime.close()
 

@@ -13,7 +13,7 @@ def diagnose(config, camera=False, ros_graph=False, ros_args=None):
               "ROS_DOMAIN_ID": os.environ.get("ROS_DOMAIN_ID"), "DISPLAY": os.environ.get("DISPLAY"),
               "WAYLAND_DISPLAY": os.environ.get("WAYLAND_DISPLAY"), "robot_queries": 0,
               "modules": {}}
-    for name in ("numpy", "scipy", "cv2", "yaml", "PyQt5.QtCore", "pyrealsense2", "rclpy"):
+    for name in ("numpy", "scipy", "cv2", "yaml", "PyQt5.QtCore", "pyrealsense2", "flexivrdk", "rclpy"):
         try:
             module = importlib.import_module(name)
             result["modules"][name] = {"available": True, "version": getattr(module, "__version__",
@@ -35,12 +35,17 @@ def diagnose(config, camera=False, ros_graph=False, ros_args=None):
                 stream.close()
         except Exception as exc:
             result["camera_error"] = str(exc)
-    if ros_graph:
+    if ros_graph and config["robot"]["pose_source"] == "flexiv_sdk":
+        result["ros_graph"] = "skipped"
+    elif ros_graph:
         try:
             from .ros_runtime import RosRuntime
             runtime = RosRuntime(config, ros_args)
             try:
-                result["pose_service_available"] = runtime.pose_source.service_available(2.0)
+                if config["robot"]["pose_source"] == "tf_snapshot":
+                    result["tf"] = runtime.pose_source.probe(2.0)
+                else:
+                    result["pose_service_available"] = runtime.pose_source.service_available(2.0)
             finally:
                 runtime.close()
         except Exception as exc:

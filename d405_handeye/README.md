@@ -78,14 +78,23 @@ ros2 launch handeye_ros calibrate.launch.py config_path:=$PWD/config/d405_eye_in
 3. 手动保持不动后点击拍照或空格；完成后再换姿态，绕至少两个非平行轴旋转。建议约 25 组训练，建议值不锁住计算按钮。
 4. 单独换姿态采集验证组，不要把同一停留位置的相邻照片分到训练与验证。可启用/停用样本、切换角色；不会删除原图。
 5. 点击“计算 / 验证”，分别查看 PARK 与 TSAI。验证不是计算或导出的前置条件；无验证时显示“未验证”。导出所选算法的 YAML、JSON、CSV、文本报告。
+6. 标定中途关闭或进程中断后，可以继续同一批样本。界面点“继续上次标定”，或启动时：
 
-重复按键和任务并发只阻止重复提交，不判断机械臂是否稳定。模糊指标、覆盖率、PnP 误差和运动标志仅记录或提示，不拦截拍照。没有完整棋盘时无法产生有效 PnP 样本，仍可能已发生本次唯一的位姿读取；不做额外的图像预检等待。
+```bash
+handeye gui --config config/d405_eye_in_hand.yaml --resume
+handeye gui --config config/d405_eye_in_hand.yaml --resume /绝对路径/session_目录
+ros2 launch handeye_ros calibrate.launch.py config_path:=$PWD/config/d405_eye_in_hand.yaml resume:=latest
+```
+
+`--resume` 不带路径，以及 `resume:=latest`，会跳过空会话，打开最近一次已有样本或未入库缓存的会话，并重新连接相机和机械臂。`--session` 仍然只做离线查看，不能继续拍照。
+
+重复按键和任务并发只阻止重复提交，不判断机械臂是否稳定。模糊指标、覆盖率、PnP 误差和运动标志仅记录或提示，不拦截拍照。没有完整棋盘时无法产生有效 PnP 样本，仍可能已发生本次唯一的位姿读取；不做额外的图像预检等待。原图、末端位姿和 TF 会先写入 `cache/pending`，识别失败或进程中断后仍可恢复；用户取消则丢弃这次缓存。
 
 ## 数据和数学
 
 `T_a_b` 把 b 下的点变到 a。`G=T_base_link_r_end_link`、`C=T_camera_optical_board`，输出 `X=T_r_end_link_camera_optical`，满足 `G X C=Y`。平移米、四元数 xyzw。Park/Tsai 的输入均为绝对 G、C，不对机器人位姿默认求逆。
 
-会话保存活动相机内参与畸变、原图、原始角点、手工排列、G/C、查询 ID 和时间。数据文件采用临时写入加原子替换；已提交索引才是有效样本清单。角点修正和重检测保存在 `analyses/`，索引历史在 `revisions/`，原始 `sample.json` 与 `image.png` 不变。启用、角色、分析更新都会增加 `dataset_revision`，旧结果标记为旧数据版本。
+会话保存活动相机内参与畸变、原图、原始角点、手工排列、G/C、TF 快照、查询 ID 和时间。拍照拿到图像和末端位姿后，会先把原图、机械臂信息和 TF 写入 `cache/pending`，检测并提交样本后才删除该缓存。数据文件采用临时写入加原子替换；已提交索引才是有效样本清单。角点修正和重检测保存在 `analyses/`，索引历史在 `revisions/`，原始 `sample.json` 与 `image.png` 不变。启用、角色、分析更新都会增加 `dataset_revision`，旧结果标记为旧数据版本。数据根目录的 `latest_session.json` 记录最近会话，供继续标定。
 
 D405 彩色流的反向 Brown-Conrady 模型使用与 SDK 一致的独立映射，归一化角点后求 PnP，误差仍在原始像素下计算。核心离线使用不导入 SDK；适配已与 SDK 纯投影函数比较，详见 [相机模型说明](docs/camera_model.md)。
 

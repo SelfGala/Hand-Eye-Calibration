@@ -19,6 +19,16 @@ def new_id(prefix):
     return f"{prefix}_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}_{uuid.uuid4().hex[:10]}"
 
 
+def timestamp_name(parent):
+    """Local time, e.g. 20261120_143805, for session and sample folders under parent."""
+    stamp = f"{datetime.now():%Y%m%d_%H%M%S}"
+    name, count = stamp, 1
+    while (Path(parent) / name).exists():
+        count += 1
+        name = f"{stamp}_{count}"
+    return name
+
+
 def atomic_write(path, text):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +159,8 @@ class Dataset:
 
     @classmethod
     def create(cls, root, config, camera, environment=None):
-        path = Path(root).resolve() / new_id("session")
+        root = Path(root).resolve()
+        path = root / timestamp_name(root)
         path.mkdir(parents=True)
         board = Board(**config["board"])
         geometry = {"board": board.to_dict(), "camera": camera.to_dict(), "frames": config["frames"]}
@@ -177,8 +188,8 @@ class Dataset:
     def add(self, image, record):
         if record["role"] not in ("train", "validation"):
             raise HandeyeError("ROLE", "角色必须为 train 或 validation")
-        sample_id = new_id("sample")
         with self.lock:
+            sample_id = timestamp_name(self.path / "samples")
             folder = self.path / "samples" / sample_id
             temp = folder.with_name(".pending_" + sample_id)
             temp.mkdir(parents=True)

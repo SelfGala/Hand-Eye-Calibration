@@ -20,7 +20,9 @@ def launch(args, ros_args):
     from .fonts import configure_fonts
     configure_fonts(app)
     config = load_config(args.config)
-    camera = runtime = controller = source = None
+    # Motion settings belong to this run; a resumed session only restores what its data depends on.
+    auto_motion = config["auto_motion"]
+    camera = runtime = controller = source = mover = None
     try:
         resume_path = None
         if args.resume is not None:
@@ -35,11 +37,21 @@ def launch(args, ros_args):
         else:
             if resume_path is not None:
                 dataset = Dataset(resume_path)
-                config = dataset.session["config"]
+                saved = dataset.session["config"]
+                # The session's config wins below, so a config file that names another arm would be ignored silently.
+                if args.config and (saved["frames"] != config["frames"]
+                                    or saved["robot"]["pose_source"] != config["robot"]["pose_source"]):
+                    raise HandeyeError("RESUME_MISMATCH",
+                                       f"会话 {dataset.path.name} 记录的是 {saved['frames']['base']} → {saved['frames']['end']}"
+                                       f"（{saved['robot']['pose_source']}），当前配置是 {config['frames']['base']} → "
+                                       f"{config['frames']['end']}（{config['robot']['pose_source']}）。"
+                                       "换了末端或位姿来源要新建会话：去掉 --resume 再启动")
+                config = saved
             if args.demo:
                 from handeye_core.synthetic import DemoRig
                 camera = DemoRig(Board(**config["board"]))
-                source = camera
+                source = mover = camera
+                auto_motion = {**auto_motion, "board_center_m": camera.board_center().tolist()}
             elif config["robot"]["pose_source"] == "flexiv_sdk":
                 from handeye_core.camera import RealSenseCamera
                 from handeye_core.flexiv_pose import FlexivPoseSource
@@ -50,10 +62,11 @@ def launch(args, ros_args):
                 from handeye_core.ros_runtime import RosRuntime
                 runtime = RosRuntime(config, ros_args)
                 source = runtime.pose_source
+                mover = runtime.create_mover(auto_motion)
                 camera = RealSenseCamera(config["camera"]).start()
             if resume_path is None:
                 dataset = Dataset.create(config["storage"]["root"], config, camera.model, diagnose(config))
-            controller = Controller(config, dataset, camera, source)
+            controller = Controller(config, dataset, camera, source, mover, auto_motion)
         if runtime:
             runtime.bind(controller)
         window = MainWindow(controller, args.demo)

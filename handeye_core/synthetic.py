@@ -7,7 +7,7 @@ from scipy.spatial.transform import Rotation
 from .dataset import Dataset
 from .detection import project
 from .models import Board, CameraModel, Frame, PoseReading
-from .transforms import transform, inverse
+from .transforms import checked, transform, inverse
 from .errors import HandeyeError
 
 
@@ -53,15 +53,37 @@ class DemoRig:
         self.closed = False
         self._cached_image = None
         self._image_index = -1
+        self._moved_to = None  # end pose commanded through move(), until the next scripted pose
+        self._arrived = False
+
+    def _board_in_camera(self):
+        if self._moved_to is None:
+            return pose_at(self.index, self.board)
+        return inverse(self.X) @ inverse(self._moved_to) @ self.Y
+
+    def board_center(self):
+        """True board centre in the base frame, for auto_motion.board_center_m in the demo."""
+        return self.Y[:3, :3] @ self.board.object_points().mean(axis=0) + self.Y[:3, 3]
+
+    def move(self, target, cancel):
+        """Stand-in for the robot: jump straight to the commanded end pose."""
+        if cancel.is_set():
+            raise HandeyeError("CANCELLED", "已取消")
+        self._moved_to = checked(target)
+        self._arrived = True
+        self._image_index = -1
 
     def read(self, request_id, timeout, cancel, on_request):
         if cancel.is_set():
             raise HandeyeError("CANCELLED", "已取消")
         on_request()
         self.query_count += 1
-        self.index += 1
-        C = pose_at(self.index, self.board)
-        G = self.Y @ inverse(C) @ inverse(self.X)
+        if self._arrived:
+            self._arrived = False  # the commanded move replaces the operator's repositioning
+        else:
+            self.index += 1
+            self._moved_to = None
+        G = self.Y @ inverse(self._board_in_camera()) @ inverse(self.X)
         return PoseReading(G, {"request_id": request_id, "source_kind": "replay",
                                 "timestamp_kind": "synthetic", "sdk_call_count": 0,
                                 "source_age_known": False, "has_motion_state": False,
@@ -69,7 +91,7 @@ class DemoRig:
 
     def latest(self):
         if self._image_index != self.index:
-            self._cached_image = render(self.board, self.model, pose_at(self.index, self.board))
+            self._cached_image = render(self.board, self.model, self._board_in_camera())
             self._image_index = self.index
         self.frame_number += 1
         return Frame(self._cached_image.copy(), self.frame_number, time.monotonic() * 1000, "synthetic")

@@ -71,7 +71,7 @@ def test_capture_persists_tf_and_clears_cache(tmp_path):
         assert controller.dataset.pending_captures() == []
         sample = controller.dataset.snapshot()[1][0]
         tf = sample["tf"]
-        assert tf["parent_frame"] == "base_link" and tf["child_frame"] == "r_end_link"
+        assert tf["parent_frame"] == "base_link" and tf["child_frame"] == "l_end_link"
         assert sample["robot"]["source_kind"] == "replay"
         recovered = from_pose(tf["translation_m"], tf["quaternion_xyzw"])
         np.testing.assert_allclose(recovered, np.asarray(sample["G"]), atol=1e-8)
@@ -240,7 +240,7 @@ def test_offline_roundtrip_revision_and_original_record_are_preserved(tmp_path):
         controller.close()
 
 
-def message(T=None, parent="base_link", child="r_end_link"):
+def message(T=None, parent="base_link", child="l_end_link"):
     return NS(header=NS(frame_id=parent, stamp=NS(sec=10, nanosec=20)), child_frame_id=child,
               transform=NS(translation=NS(x=0.1, y=0.2, z=0.3), rotation=NS(x=0, y=0, z=0, w=1)))
 
@@ -249,9 +249,9 @@ def test_ros_frame_direction_is_explicit():
     config = load_config()
     T, header = decode_transform(message(), config)
     with pytest.raises(HandeyeError):
-        decode_transform(message(parent="r_end_link", child="base_link"), config)
+        decode_transform(message(parent="l_end_link", child="base_link"), config)
     config["robot"]["allow_inverted_input"] = True
-    recovered, header = decode_transform(message(parent="r_end_link", child="base_link"), config)
+    recovered, header = decode_transform(message(parent="l_end_link", child="base_link"), config)
     np.testing.assert_allclose(recovered, inverse(T))
     assert header["input_inverted"]
 

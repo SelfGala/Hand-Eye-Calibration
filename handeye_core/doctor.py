@@ -13,7 +13,7 @@ def diagnose(config, camera=False, ros_graph=False, ros_args=None):
               "ROS_DOMAIN_ID": os.environ.get("ROS_DOMAIN_ID"), "DISPLAY": os.environ.get("DISPLAY"),
               "WAYLAND_DISPLAY": os.environ.get("WAYLAND_DISPLAY"), "robot_queries": 0,
               "modules": {}}
-    for name in ("numpy", "scipy", "cv2", "yaml", "PyQt5.QtCore", "pyrealsense2", "flexivrdk", "rclpy"):
+    for name in ("numpy", "scipy", "cv2", "yaml", "PyQt5.QtCore", "pyrealsense2", "flexivrdk", "rclpy", "moveit_msgs"):
         try:
             module = importlib.import_module(name)
             result["modules"][name] = {"available": True, "version": getattr(module, "__version__",

@@ -50,7 +50,7 @@ class RobotPoseService:
         response.request_id = request.request_id
         self.request_count += 1
         if (request.base_frame, request.end_frame) != (self.config.get("base_frame", "base_link"),
-                                                      self.config.get("end_frame", "r_end_link")):
+                                                      self.config.get("end_frame", "l_end_link")):
             response.error_code, response.message = "FRAME_MISMATCH", "请求坐标系与适配器不一致"
             return response
         if not self.lock.acquire(blocking=False):

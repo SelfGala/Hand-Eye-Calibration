@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # D405 眼在手上标定。相机是本机 USB 上的 D405，末端位姿读 /tf。
-# 右臂：base_link -> r_end_link。左臂把 config/d405_eye_in_hand.yaml 的 end 改成 l_end_link。
+# 左臂：base_link -> l_end_link。右臂把 config/d405_eye_in_hand.yaml 的 end 改成 r_end_link。
 # /foo/camera_1 和 /foo/camera_2 是底盘相机，不参与这次标定。
 cd "$(dirname "$0")"
 
@@ -34,12 +34,14 @@ echo "========== 2/3 打开标定界面 =========="
 echo "棋盘固定不动，相机在末端。"
 echo "让完整棋盘入镜，确认绿色 0 点始终是同一个物理角。"
 echo "手臂停稳后点拍照或按空格，保存完成后再换一个姿态。"
+echo "想让手臂自己换姿态：先摆到棋盘在画面中间，勾选“拍照成功后自动移动到下一点”（需要工控机上的 move_group）。"
 echo "先采训练组（建议约 25 组，绕不同轴），再单独采验证组。"
 echo "然后点“计算 / 验证”，导出 PARK 或 TSAI。"
 handeye gui --config "$CONFIG" --resume
 status=$?
 if [ "$status" -ne 0 ]; then
   echo "标定界面退出（退出码 $status）" >&2
+  echo "如果是 NO_SESSION 或 RESUME_MISMATCH，先不带 --resume 新建会话：handeye gui --config $CONFIG" >&2
   exit "$status"
 fi
 

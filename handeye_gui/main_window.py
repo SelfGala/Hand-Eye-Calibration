@@ -103,6 +103,15 @@ class MainWindow(QMainWindow):
         side_layout.addWidget(self.show_overlay)
         self.flip = QCheckBox("本次角点编号旋转 180°")
         side_layout.addWidget(self.flip)
+        self.auto_box = QCheckBox("拍照成功后自动移动到下一点")
+        self.auto_box.clicked.connect(self.toggle_auto)
+        side_layout.addWidget(self.auto_box)
+        self.next_button = QPushButton("跳过此点，移动到下一点")
+        self.next_button.clicked.connect(
+            lambda: self.run_action(lambda: setattr(self, "current_job", self.controller.auto_next())))
+        side_layout.addWidget(self.next_button)
+        for widget in (self.auto_box, self.next_button):
+            widget.setVisible(controller.mover is not None)
         self.live_button = QPushButton("返回实时预览")
         self.live_button.clicked.connect(self.resume_preview)
         side_layout.addWidget(self.live_button)
@@ -281,6 +290,14 @@ class MainWindow(QMainWindow):
             self.viewing_sample = False
         self.run_action(action)
 
+    def toggle_auto(self, checked):
+        def action():
+            if checked:
+                self.current_job = self.controller.auto_start()
+            else:
+                self.controller.auto_stop()
+        self.run_action(action)
+
     def compute(self):
         self.run_action(lambda: setattr(self, "current_job", self.controller.compute()))
 
@@ -375,6 +392,12 @@ class MainWindow(QMainWindow):
                        self.flip_button, self.compute_button):
             button.setEnabled(not busy)
         self.cancel_button.setEnabled(busy)
+        auto = controller.auto is not None
+        self.auto_box.setEnabled(not busy)
+        self.next_button.setEnabled(not busy and auto)
+        if not busy:
+            # Starting is a job; while it runs the box keeps what the user clicked.
+            self.auto_box.setChecked(auto)
         if self.current_job:
             job = controller.get_job(self.current_job)
             state = {"queued": "已受理", "running": "处理中", "succeeded": "完成", "failed": "失败", "cancelled": "已取消"}[job["state"]]

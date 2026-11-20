@@ -2,10 +2,10 @@ calibration:
   type: eye_in_hand
   algorithms: [PARK, TSAI]
   recommended_training_samples: 30
-# 右臂末端。相机若装在左臂，把 end 改成 l_end_link。
+# 左臂末端。相机若装在右臂，把 end 改成 r_end_link，auto_motion.move_group 改成 right_arm。
 frames:
   base: base_link
-  end: r_end_link
+  end: l_end_link
   camera_optical: d405_color_optical_frame
 camera:
   backend: realsense
@@ -26,7 +26,7 @@ camera:
     - [0.0, 0.0, 1.0]
   D: [-0.05524762453945824, 0.06565775812676004, -0.0007941365118372136, 0.0011792331264988433, -0.024076762264144173]
 robot:
-  # 现场没有 /robot/get_end_pose，末端位姿来自 /tf：base_link -> r_end_link。
+  # 现场没有 /robot/get_end_pose，末端位姿来自 /tf：base_link -> l_end_link。
   pose_source: tf_snapshot
   service_name: /robot/get_end_pose
   query_timeout_seconds: 1.5
@@ -39,6 +39,25 @@ sampling:
   pairing_mode: manual_stationary_snapshot
   pose_reads_per_capture: 1
   capture_timeout_seconds: 5.0
+# 可选的自动换位，在界面里勾选后才生效：人工拍照成功后，末端绕棋盘中心转到下一点。
+# 运动指令经 ROS 2 发给工控机上的 move_group。
+auto_motion:
+  # 棋盘中心在 base_link 下的位置，米。base_link 的 +X 朝右、+Y 朝前、+Z 朝上，
+  # 原点在躯干上，不在地面，所以 Z 要按 base_link 原点量。
+  # 现在的值：棋盘在正前方、和 base_link 同高。Y 是按相机对准棋盘时的 l_end_link 位姿
+  # （Y = 0.63，末端 +Y 指向棋盘）加相机到棋盘的 0.70 m 推出来的。
+  board_center_m: [0.0, 1.32, 0.0]
+  # 起点之外的点数。到不了的点在规划时自动跳过，不用人管；这台手臂腕部关节行程小
+  # （l_shoulder_7_joint 只有 ±0.34 rad），仿真里从现在的起点大约能到一半。
+  points: 60
+  max_tilt_deg: 20     # 末端姿态偏离起点的最大角度
+  max_roll_deg: 20     # 绕视线的最大滚转
+  # 末端离起点最远走多少米。棋盘近时末端绕棋盘中心转，棋盘在画面里不动；棋盘远时这样转要走
+  # 棋盘距离 × 倾角，手臂够不着，转动中心就按这个值移到末端和棋盘之间，棋盘会在画面里偏移。
+  # 现在棋盘离末端 0.70 m，取 0.15 m 时偏移约 8°。调大则偏移小、到不了的点多。
+  max_travel_m: 0.15
+  move_group: left_arm
+  velocity_scale: 0.1  # 相对 MoveIt 满速的比例
 board:
   # 9×6 是黑白格的格数，内角点为 8×5，共 40 个。
   count_interpretation: squares

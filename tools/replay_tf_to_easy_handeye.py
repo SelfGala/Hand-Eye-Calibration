@@ -2,7 +2,7 @@
 """把 d405_handeye 会话样本逐条发到 /tf，配合 easy_handeye2 的 Sample 按钮。
 
 每条样本持续发布两段变换，时间戳用当前时间：
-  base_link    -> r_end_link    来自 sample.json 的 G
+  base_link    -> l_end_link    来自 sample.json 的 G
   camera_link  -> plant_link    来自 sample.json 的 analysis.C
 
 easy_handeye2 每成功收下一条样本，这里就切到下一条姿态，直到修订索引里的样本发完。
@@ -205,7 +205,7 @@ def main():
     parser.add_argument("--session", type=Path, default=DEFAULT_SESSION, help="含 revisions/ 和 samples/ 的会话目录")
     parser.add_argument("--rate", type=float, default=100.0, help="TF 发布频率，默认 100 Hz")
     parser.add_argument("--base-frame", default="base_link")
-    parser.add_argument("--end-frame", default="r_end_link")
+    parser.add_argument("--end-frame", default="l_end_link")
     parser.add_argument("--camera-frame", default="camera_link")
     parser.add_argument("--marker-frame", default="plant_link")
     parser.add_argument("--sample-list-service", default="/easy_handeye2/calibration/get_sample_list")

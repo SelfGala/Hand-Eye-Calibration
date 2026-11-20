@@ -5,11 +5,16 @@ from threading import Event, RLock
 import time
 import json
 import numpy as np
+from .auto_motion import image_drift_deg, image_margin_deg, pivot_distance, sphere_targets
 from .dataset import Dataset, new_id, read_image, remember_session
 from .detection import detect, from_corners
 from .errors import HandeyeError
 from .solver import solve
 from .transforms import checked, tf_snapshot
+
+# The camera sits within a few centimetres of the end link, so the configured board centre and
+# the board the camera sees must be about equally far away. More than this means a wrong config.
+BOARD_DISTANCE_TOLERANCE_M = 0.3
 
 
 @dataclass
@@ -26,11 +31,14 @@ class Job:
 
 
 class Controller:
-    def __init__(self, config, dataset, camera=None, pose_source=None):
+    def __init__(self, config, dataset, camera=None, pose_source=None, mover=None, auto_motion=None):
         self.config = deepcopy(config)
         self.dataset = dataset
         self.camera = camera
         self.pose_source = pose_source
+        self.mover = mover
+        self.auto_motion = deepcopy(auto_motion)
+        self.auto = None  # {"targets", "index"} while automatic repositioning is on
         self.lock = RLock()
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="handeye-job")
         self.jobs = {}
@@ -133,8 +141,85 @@ class Controller:
             except Exception as exc:
                 self._keep_or_drop_cache(cache_id, exc)
                 raise
-            job.message = "已保存，可以移动到下一姿态" + ("；" + "；".join(record["warnings"]) if record["warnings"] else "")
+            warnings = "；" + "；".join(record["warnings"]) if record["warnings"] else ""
+            if self.auto is None:
+                job.message = "已保存，可以移动到下一姿态" + warnings
+            else:
+                self._advance(job, cancel, "已保存" + warnings + "；")
         return self._submit("capture", execute)
+
+    def auto_start(self):
+        """Turn on automatic repositioning, with the current pose as its starting point."""
+        if self.mover is None or self.camera is None or self.pose_source is None:
+            raise HandeyeError("AUTO_UNAVAILABLE", "当前运行方式不能自动换位")
+        def execute(job, cancel):
+            options = self.auto_motion
+            connect = getattr(self.mover, "connect", None)
+            if connect:
+                job.message = "连接 move_group"
+                connect()  # a missing move_group should show now, not after the first capture
+            job.message = "读取起点位姿，核对棋盘距离"
+            reading = self.pose_source.read(new_id("pose"), self.config["robot"]["query_timeout_seconds"],
+                                             cancel, lambda: self._count(job))
+            seed = checked(reading.G)
+            frame = self.camera.fresh(time.monotonic_ns(), self.config["sampling"]["capture_timeout_seconds"], cancel)
+            board = self.dataset.board
+            seen_board = detect(frame.image, board, self.dataset.camera)
+            C = np.asarray(seen_board["C"])
+            seen = np.linalg.norm(C[:3, :3] @ board.object_points().mean(axis=0) + C[:3, 3])
+            center = np.asarray(options["board_center_m"], float)
+            radius = np.linalg.norm(center - seed[:3, 3])
+            if abs(radius - seen) > BOARD_DISTANCE_TOLERANCE_M:
+                raise HandeyeError("AUTO_BOARD_CENTER", f"配置的棋盘中心离末端 {radius:.2f} m，相机实测棋盘在 {seen:.2f} m；"
+                                                        "请核对 auto_motion.board_center_m")
+            targets = sphere_targets(seed, center, options["points"], options["max_tilt_deg"],
+                                     options["max_roll_deg"], options["max_travel_m"])
+            pivot = pivot_distance(radius, options["max_tilt_deg"], options["max_travel_m"])
+            drift = image_drift_deg(radius, pivot, options["max_tilt_deg"])
+            margin = image_margin_deg(seen_board["corners"], board, self.dataset.camera, options["max_roll_deg"])
+            with self.lock:
+                self._cancelled(cancel)
+                self.auto = {"targets": targets, "index": 0}
+            job.message = (f"自动换位已开启：棋盘距末端 {radius:.2f} m，绕前方 {pivot:.2f} m 处转动，共 {len(targets)} 个点"
+                           + (f"，棋盘在画面里最多偏移约 {drift:.0f}°" if drift > 1 else "")
+                           + "。先在当前姿态拍照，成功后自动移动"
+                           + (f"。注意：棋盘离画面边缘只有约 {margin:.0f}°，靠外的点可能拍不全；可把棋盘摆到画面中间，或调大 max_travel_m"
+                              if drift > margin else ""))
+        return self._submit("auto_start", execute)
+
+    def auto_stop(self):
+        with self.lock:
+            self._editable()
+            self.auto = None
+
+    def auto_next(self):
+        """Give up on the current point and move to the next one."""
+        return self._submit("move", lambda job, cancel: self._advance(job, cancel))
+
+    def _advance(self, job, cancel, done=""):
+        """Move to the next target the arm can reach; targets it cannot reach are skipped."""
+        skipped = 0
+        while True:
+            with self.lock:
+                if self.auto is None:
+                    raise HandeyeError("AUTO_OFF", "自动换位没有开启")
+                targets, index = self.auto["targets"], self.auto["index"]
+                if index == len(targets):
+                    self.auto = None
+                    job.message = done + (f"剩下 {skipped} 个点到不了；" if skipped else "") + "所有点已走完，自动换位结束"
+                    return
+                self.auto["index"] = index + 1
+            job.message = f"{done}正在移动到第 {index + 1}/{len(targets)} 点"
+            try:
+                self.mover.move(targets[index], cancel)
+            except HandeyeError as exc:
+                if exc.code == "UNREACHABLE":
+                    skipped += 1
+                    continue
+                raise HandeyeError(exc.code, f"{done}{exc}") from exc
+            job.message = (f"{done}已到第 {index + 1}/{len(targets)} 点" + (f"，跳过了 {skipped} 个到不了的点" if skipped else "")
+                           + "；停稳后拍照")
+            return
 
     def _warnings(self, analysis, metadata):
         warnings = []

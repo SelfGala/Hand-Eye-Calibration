@@ -14,7 +14,7 @@ class MockReader:
     def read_pose(self, timeout_seconds):
         t = list(self.node.get_parameter("translation_m").value)
         q = list(self.node.get_parameter("quaternion_xyzw").value)
-        return PoseReading(from_pose(t, q), {"base_frame": "base_link", "end_frame": "r_end_link",
+        return PoseReading(from_pose(t, q), {"base_frame": "base_link", "end_frame": "l_end_link",
             "timestamp_kind": "host_query_midpoint", "source_kind": "replay",
             "source_age_known": False, "has_motion_state": False, "sdk_call_count": 0})
 

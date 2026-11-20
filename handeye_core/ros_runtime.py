@@ -5,7 +5,14 @@ import time
 import numpy as np
 from .errors import HandeyeError
 from .models import PoseReading
-from .transforms import from_pose, inverse
+from .transforms import from_pose, inverse, pose_components
+
+PLAN_SERVICE = "/compute_cartesian_path"
+EXECUTE_ACTION = "/execute_trajectory"
+STOP_TOPIC = "/trajectory_execution_event"
+MOVEIT_SUCCESS = 1
+CONNECT_SECONDS = 3.0
+STOP_CONFIRM_SECONDS = 3.0
 
 
 def _stamp(stamp):
@@ -240,6 +247,148 @@ class TfPoseSource:
                 cancel.wait(0.02)
 
 
+def _wait(future, cancel, timeout, what):
+    done = Event()
+    future.add_done_callback(lambda _: done.set())
+    deadline = time.monotonic() + timeout
+    while not done.wait(0.02):
+        if cancel.is_set():
+            raise HandeyeError("CANCELLED", "已取消")
+        if time.monotonic() >= deadline:
+            raise HandeyeError("MOVE_TIMEOUT", f"{what}超时")
+    return future.result()
+
+
+def slow_down(trajectory, scale):
+    """Stretch a joint trajectory in time and return its new duration in seconds.
+
+    move_group times Cartesian paths at full speed and takes no scaling factor in the request.
+    Points that do not advance in time are dropped; controllers reject them.
+    """
+    points, last = [], -1.0
+    for point in trajectory.points:
+        t = (point.time_from_start.sec + point.time_from_start.nanosec * 1e-9) / scale
+        if t <= last:
+            continue
+        last = t
+        point.time_from_start.sec, point.time_from_start.nanosec = divmod(round(t * 1e9), 1_000_000_000)
+        point.velocities = [v * scale for v in point.velocities]
+        point.accelerations = [a * scale * scale for a in point.accelerations]
+        points.append(point)
+    trajectory.points = points
+    return max(last, 0.0)
+
+
+class MoveItMover:
+    """Moves the end link through move_group on the robot computer.
+
+    A straight Cartesian path is planned from the current state, then executed. A target the
+    path cannot fully reach raises UNREACHABLE before anything moves.
+
+    Humble's move_group does not stop when an ExecuteTrajectory goal is cancelled. What stops the
+    arm is "stop" on the execution event topic, so no motion starts unless move_group listens there.
+    """
+    def __init__(self, node, frames, options, group):
+        self.node, self.frames, self.options, self.group = node, frames, options, group
+        self.plan_client = self.execute_client = None
+
+    def connect(self):
+        if self.plan_client is None:
+            try:
+                from moveit_msgs.action import ExecuteTrajectory
+                from moveit_msgs.srv import GetCartesianPath
+            except ImportError as exc:
+                raise HandeyeError("MOVEIT_MSGS", "本机没有 moveit_msgs，请安装 ros-$ROS_DISTRO-moveit-msgs") from exc
+            from geometry_msgs.msg import Pose
+            from rclpy.action import ActionClient
+            from std_msgs.msg import String
+            self.pose_type, self.plan_type, self.goal_type = Pose, GetCartesianPath.Request, ExecuteTrajectory.Goal
+            self.stop_type = String
+            self.stop_publisher = self.node.create_publisher(String, STOP_TOPIC, 10)
+            self.plan_client = self.node.create_client(GetCartesianPath, PLAN_SERVICE, callback_group=self.group)
+            self.execute_client = ActionClient(self.node, ExecuteTrajectory, EXECUTE_ACTION, callback_group=self.group)
+        deadline = time.monotonic() + CONNECT_SECONDS
+        ready = (self.plan_client.wait_for_service(timeout_sec=CONNECT_SECONDS)
+                 and self.execute_client.wait_for_server(timeout_sec=CONNECT_SECONDS))
+        while ready and self.stop_publisher.get_subscription_count() == 0:
+            ready = time.monotonic() < deadline
+            time.sleep(0.02)
+        if not ready:
+            raise HandeyeError("MOVE_GROUP_UNAVAILABLE", f"找不到 move_group 的 {PLAN_SERVICE}、{EXECUTE_ACTION} 或 {STOP_TOPIC}")
+
+    def _stop(self, handle, result):
+        """Stop the arm and wait until move_group reports the execution over."""
+        handle.cancel_goal_async()  # enough on MoveIt versions that honour it
+        over = Event()
+        result.add_done_callback(lambda _: over.set())
+        deadline = time.monotonic() + STOP_CONFIRM_SECONDS
+        while True:
+            # Repeated: a stop that arrives before move_group starts executing an accepted goal is lost.
+            self.stop_publisher.publish(self.stop_type(data="stop"))
+            if over.wait(0.1):
+                return
+            if time.monotonic() >= deadline:
+                raise HandeyeError("STOP_UNCONFIRMED", "已发出停止指令，但 move_group 没有确认停下；请立刻确认手臂状态，必要时按急停")
+
+    def _stop_late_goal(self, sending):
+        handle = None if sending.cancelled() or sending.exception() else sending.result()
+        if handle is not None and handle.accepted:
+            Thread(target=self._stop, args=(handle, handle.get_result_async()), daemon=True).start()
+
+    def move(self, target, cancel):
+        self.connect()
+        pose = pose_components(target)
+        waypoint = self.pose_type()
+        waypoint.position.x, waypoint.position.y, waypoint.position.z = pose["translation_m"]
+        (waypoint.orientation.x, waypoint.orientation.y,
+         waypoint.orientation.z, waypoint.orientation.w) = pose["quaternion_xyzw"]
+        request = self.plan_type()
+        request.header.frame_id = self.frames["base"]
+        request.start_state.is_diff = True  # start from the current state
+        request.group_name = self.options["move_group"]
+        request.link_name = self.frames["end"]
+        request.waypoints = [waypoint]
+        request.max_step = 0.01
+        # The IK solver may return a far-away arm configuration; cut the path there instead of following it.
+        request.jump_threshold = 5.0
+        request.avoid_collisions = True
+        planning = self.plan_client.call_async(request)
+        try:
+            plan = _wait(planning, cancel, 10.0, "路径规划")
+        finally:
+            self.plan_client.remove_pending_request(planning)
+        if plan.error_code.val != MOVEIT_SUCCESS:
+            raise HandeyeError("MOVE_FAILED", f"move_group 没有接受规划请求，错误码 {plan.error_code.val}")
+        if plan.fraction < 0.999:
+            raise HandeyeError("UNREACHABLE", f"直线路径只能走完 {plan.fraction:.0%}")
+        duration = slow_down(plan.solution.joint_trajectory, self.options["velocity_scale"])
+        if duration <= 0:
+            raise HandeyeError("UNREACHABLE", "规划结果没有可执行的时间参数")
+        goal = self.goal_type()
+        goal.trajectory = plan.solution
+        sending = self.execute_client.send_goal_async(goal)
+        try:
+            handle = _wait(sending, cancel, 5.0, "发送轨迹")
+        except HandeyeError:
+            # The goal can still be accepted after we stop waiting; it must not run then.
+            sending.add_done_callback(self._stop_late_goal)
+            raise
+        if not handle.accepted:
+            raise HandeyeError("MOVE_FAILED", "move_group 拒绝执行这条轨迹")
+        finished = handle.get_result_async()
+        try:
+            result = _wait(finished, cancel, duration * 1.5 + 10.0, "轨迹执行").result
+        except HandeyeError:
+            self._stop(handle, finished)
+            raise
+        if result.error_code.val != MOVEIT_SUCCESS:
+            raise HandeyeError("MOVE_FAILED", f"轨迹执行失败，MoveIt 错误码 {result.error_code.val}；先确认手臂状态")
+
+    def close(self):
+        if self.execute_client is not None:
+            self.execute_client.destroy()
+
+
 class RosRuntime:
     def __init__(self, config, ros_args=None):
         import rclpy
@@ -255,6 +404,7 @@ class RosRuntime:
         self.executor.add_node(self.node)
         self.group = ReentrantCallbackGroup()
         self.services = []
+        self.mover = None
         mode = config["robot"]["pose_source"]
         classes = {"service_request": ServicePoseSource, "topic_snapshot": TopicPoseSource, "tf_snapshot": TfPoseSource}
         if mode not in classes:
@@ -285,6 +435,10 @@ class RosRuntime:
                     time.sleep(0.05)
         self.thread = Thread(target=spin, name="ros-executor", daemon=True)
         self.thread.start()
+
+    def create_mover(self, options):
+        self.mover = MoveItMover(self.node, self.config["frames"], options, self.group)
+        return self.mover
 
     def bind(self, controller):
         from handeye_interfaces.srv import CaptureSample, StartCompute, GetJob, SetSampleEnabled, GetResult
@@ -366,6 +520,8 @@ class RosRuntime:
         closer = getattr(self.pose_source, "close", None)
         if closer:
             closer()
+        if self.mover:
+            self.mover.close()
         self.node.destroy_node()
         if self.context.ok():
             rclpy.shutdown(context=self.context)

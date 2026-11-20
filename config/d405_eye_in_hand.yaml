@@ -9,7 +9,7 @@ frames:
   camera_optical: d405_color_optical_frame
 camera:
   backend: realsense
-  serial: "230322272193"
+  serial: "260322279161"
   stream: color
   stream_index: 0
   width: 1280
@@ -18,13 +18,7 @@ camera:
   format: bgr8
   allow_profile_fallback: false
   enable_global_time_if_supported: true
-  # 原图上的 OpenCV 内参。PnP 使用 K 和 D，不用去畸变后的 P。
-  distortion_model: opencv
-  K:
-    - [657.697487564434, 0.0, 638.5992678703022]
-    - [0.0, 657.4415697876618, 365.14810012910425]
-    - [0.0, 0.0, 1.0]
-  D: [-0.05524762453945824, 0.06565775812676004, -0.0007941365118372136, 0.0011792331264988433, -0.024076762264144173]
+  # 不写 K/D。打开彩色流后使用相机报告的内参和畸变模型，不改写系数。
 robot:
   # 现场没有 /robot/get_end_pose，末端位姿来自 /tf：base_link -> l_end_link。
   pose_source: tf_snapshot
